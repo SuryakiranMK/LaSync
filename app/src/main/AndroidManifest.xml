@@ -13,9 +13,9 @@
     <application
         android:name=".LaSyncApp"
         android:allowBackup="true"
-        android:icon="@drawable/lasync_logo"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/lasync_logo"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.LaSync">
 
