@@ -9,6 +9,15 @@
   <i>Phase-Locked Multi-Device Audio Timeline Distribution</i>
 </p>
 
+<p align="center">
+  <a href="https://github.com/SuryakiranMK/LaSync/releases/download/v1.0.0-phase1/LaSync.apk">
+    <img src="https://img.shields.io/badge/Download%20APK-v1.0.0--phase1-00F2FE?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
+  </a>
+  <a href="https://github.com/SuryakiranMK/LaSync/releases/latest">
+    <img src="https://img.shields.io/badge/Release-v1.0.0--phase1-9D4EDD?style=for-the-badge" alt="Release Version" />
+  </a>
+</p>
+
 ---
 
 ## 🏛 Technical Expansion
