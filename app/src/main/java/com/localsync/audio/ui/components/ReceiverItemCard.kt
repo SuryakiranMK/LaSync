@@ -1,8 +1,5 @@
 package com.localsync.audio.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -24,17 +21,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.localsync.audio.core.sync.ReceiverNode
-import com.localsync.audio.ui.theme.AmberWarning
-import com.localsync.audio.ui.theme.CyanGlow
-import com.localsync.audio.ui.theme.EmeraldGlow
-import com.localsync.audio.ui.theme.RoseError
-import com.localsync.audio.ui.theme.SurfaceBorder
-import com.localsync.audio.ui.theme.SurfaceCard
+import com.localsync.audio.ui.theme.BorderNeon
+import com.localsync.audio.ui.theme.CarbonCard
+import com.localsync.audio.ui.theme.CrimsonPulse
+import com.localsync.audio.ui.theme.HyperCyan
+import com.localsync.audio.ui.theme.QuantumMint
+import com.localsync.audio.ui.theme.SolarAmber
 import com.localsync.audio.ui.theme.TextMuted
 import com.localsync.audio.ui.theme.TextPrimary
 import com.localsync.audio.ui.theme.TextSecondary
@@ -47,16 +45,17 @@ fun ReceiverItemCard(
 ) {
     val rttStatusColor = when {
         receiver.rttMs <= 0f -> TextMuted
-        receiver.rttMs < 8f -> EmeraldGlow
-        receiver.rttMs < 20f -> AmberWarning
-        else -> RoseError
+        receiver.rttMs < 8f -> QuantumMint
+        receiver.rttMs < 20f -> SolarAmber
+        else -> CrimsonPulse
     }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(SurfaceCard, RoundedCornerShape(16.dp))
-            .border(1.dp, SurfaceBorder, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(CarbonCard)
+            .border(1.dp, BorderNeon, RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
         Column {
@@ -67,13 +66,15 @@ fun ReceiverItemCard(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(CyanGlow.copy(alpha = 0.12f), CircleShape),
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(HyperCyan.copy(alpha = 0.12f))
+                        .border(1.dp, HyperCyan.copy(alpha = 0.25f), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.PhoneAndroid,
                         contentDescription = "Device",
-                        tint = CyanGlow,
+                        tint = HyperCyan,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -83,13 +84,13 @@ fun ReceiverItemCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = receiver.name,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
                     Text(
                         text = "${receiver.ipAddress} • Port ${receiver.port}",
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace,
                         color = TextMuted
                     )
@@ -103,49 +104,49 @@ fun ReceiverItemCard(
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(EmeraldGlow, CircleShape)
+                            .background(QuantumMint, CircleShape)
                     )
                     Text(
-                        text = if (receiver.isSynchronized) "SYNCED" else "ONLINE",
-                        fontSize = 11.sp,
+                        text = if (receiver.isSynchronized) "PHASE-LOCKED" else "ONLINE",
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
-                        color = EmeraldGlow
+                        color = QuantumMint
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Telemetry Metrics Row
+            // Telemetry Metrics Row using uniform LaSyncMetricCard
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                LiveMetricBadge(
+                LaSyncMetricCard(
                     label = "RTT",
                     value = String.format(Locale.US, "%.1f", receiver.rttMs),
                     unit = "ms",
                     statusColor = rttStatusColor,
                     modifier = Modifier.weight(1f)
                 )
-                LiveMetricBadge(
+                LaSyncMetricCard(
                     label = "Jitter",
                     value = String.format(Locale.US, "%.1f", receiver.jitterMs),
                     unit = "ms",
                     modifier = Modifier.weight(1f)
                 )
-                LiveMetricBadge(
+                LaSyncMetricCard(
                     label = "Offset",
                     value = String.format(Locale.US, "%+.1f", receiver.offsetMs),
                     unit = "ms",
                     modifier = Modifier.weight(1f)
                 )
-                LiveMetricBadge(
+                LaSyncMetricCard(
                     label = "Loss",
                     value = String.format(Locale.US, "%.1f", receiver.packetLossPercent),
                     unit = "%",
-                    statusColor = if (receiver.packetLossPercent > 2f) AmberWarning else EmeraldGlow,
+                    statusColor = if (receiver.packetLossPercent > 2f) SolarAmber else QuantumMint,
                     modifier = Modifier.weight(1f)
                 )
             }

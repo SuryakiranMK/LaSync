@@ -21,35 +21,33 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Sensors
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.localsync.audio.core.network.HostNetworkEngine
-import com.localsync.audio.ui.components.PulseRadar
+import com.localsync.audio.ui.components.LaSyncRadar
+import com.localsync.audio.ui.components.LaSyncTopBar
+import com.localsync.audio.ui.components.LaSyncWaveEqualizer
 import com.localsync.audio.ui.components.ReceiverItemCard
-import com.localsync.audio.ui.theme.CyanGlow
-import com.localsync.audio.ui.theme.DarkBackground
-import com.localsync.audio.ui.theme.EmeraldGlow
-import com.localsync.audio.ui.theme.RoseError
-import com.localsync.audio.ui.theme.SurfaceBorder
-import com.localsync.audio.ui.theme.SurfaceCard
+import com.localsync.audio.ui.theme.BorderNeon
+import com.localsync.audio.ui.theme.CarbonCard
+import com.localsync.audio.ui.theme.HyperCyan
+import com.localsync.audio.ui.theme.QuantumMint
 import com.localsync.audio.ui.theme.TextMuted
 import com.localsync.audio.ui.theme.TextPrimary
 import com.localsync.audio.ui.theme.TextSecondary
+import com.localsync.audio.ui.theme.Ultraviolet
+import com.localsync.audio.ui.theme.VoidBackground
 
 @Composable
 fun HostScreen(
@@ -62,47 +60,16 @@ fun HostScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(VoidBackground)
             .padding(20.dp)
     ) {
-        // Top Bar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = "HOSTING SESSION",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    color = CyanGlow,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = state.sessionId,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    color = TextPrimary
-                )
-            }
-
-            IconButton(
-                onClick = onStopSession,
-                modifier = Modifier
-                    .background(RoseError.copy(alpha = 0.15f), CircleShape)
-                    .size(40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Stop",
-                    tint = RoseError,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
+        // Uniform Brand Top Bar
+        LaSyncTopBar(
+            title = "LaSync",
+            subtitle = "Master Host • ${state.sessionId}",
+            tag = "HOST",
+            onCloseClick = onStopSession
+        )
 
         Spacer(modifier = Modifier.height(18.dp))
 
@@ -110,8 +77,9 @@ fun HostScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(SurfaceCard, RoundedCornerShape(16.dp))
-                .border(1.dp, SurfaceBorder, RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(16.dp))
+                .background(CarbonCard)
+                .border(1.dp, BorderNeon, RoundedCornerShape(16.dp))
                 .padding(16.dp)
         ) {
             Row(
@@ -121,11 +89,14 @@ fun HostScreen(
             ) {
                 Column {
                     Text(
-                        text = "HOST LAN ADDRESS",
-                        fontSize = 11.sp,
+                        text = "MASTER TIMELINE SOCKET",
+                        fontSize = 10.sp,
                         fontFamily = FontFamily.Monospace,
-                        color = TextMuted
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextMuted,
+                        letterSpacing = 0.5.sp
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "${state.localIp} : 8888",
                         fontSize = 15.sp,
@@ -137,25 +108,22 @@ fun HostScreen(
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(EmeraldGlow, CircleShape)
-                    )
+                    LaSyncWaveEqualizer(tint = QuantumMint, maxHeight = 16.dp)
+
                     Text(
-                        text = "BEACON ON",
+                        text = "BROADCASTING",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
-                        color = EmeraldGlow
+                        color = QuantumMint
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(22.dp))
 
         // Listeners Header
         Row(
@@ -170,12 +138,12 @@ fun HostScreen(
                 Icon(
                     imageVector = Icons.Default.Group,
                     contentDescription = "Listeners",
-                    tint = CyanGlow,
+                    tint = HyperCyan,
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = "CONNECTED LISTENERS",
-                    fontSize = 14.sp,
+                    text = "SYNCHRONIZED LISTENERS",
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                     color = TextPrimary
@@ -184,22 +152,24 @@ fun HostScreen(
 
             Box(
                 modifier = Modifier
-                    .background(CyanGlow.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(HyperCyan.copy(alpha = 0.12f))
+                    .border(1.dp, HyperCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = "${state.receivers.size} ACTIVE",
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    color = CyanGlow
+                    color = HyperCyan
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Dynamic Receiver List or Waiting Radar
+        // Dynamic Receiver List or Animated Waiting Radar
         if (state.receivers.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -211,21 +181,21 @@ fun HostScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    PulseRadar(size = 160.dp, tint = CyanGlow)
+                    LaSyncRadar(size = 170.dp, tint = HyperCyan)
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
 
                     Text(
                         text = "Broadcasting Beacon on LAN",
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
 
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "Open LocalSync on other phones and select JOIN",
+                        text = "Open LaSync on listener phones and tap JOIN",
                         fontSize = 13.sp,
                         color = TextSecondary
                     )
@@ -251,20 +221,20 @@ fun HostScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "Pings Answered: ${state.totalPingsAnswered}",
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
                 color = TextMuted
             )
 
             Text(
-                text = "Phase 1: LAN Network Engine",
-                fontSize = 12.sp,
+                text = "LaSync Core Engine",
+                fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
                 color = TextMuted
             )

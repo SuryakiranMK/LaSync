@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LocalSync"
+rootProject.name = "LaSync"
 include(":app")

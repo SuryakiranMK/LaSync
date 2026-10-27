@@ -27,8 +27,8 @@ import com.localsync.audio.core.service.LocalSyncForegroundService
 import com.localsync.audio.ui.screens.HomeScreen
 import com.localsync.audio.ui.screens.HostScreen
 import com.localsync.audio.ui.screens.ReceiverScreen
-import com.localsync.audio.ui.theme.DarkBackground
-import com.localsync.audio.ui.theme.LocalSyncTheme
+import com.localsync.audio.ui.theme.LaSyncTheme
+import com.localsync.audio.ui.theme.VoidBackground
 
 enum class ScreenState {
     HOME,
@@ -56,10 +56,10 @@ class MainActivity : ComponentActivity() {
         checkPermissions()
 
         setContent {
-            LocalSyncTheme {
+            LaSyncTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = DarkBackground
+                    color = VoidBackground
                 ) {
                     var currentScreen by remember { mutableStateOf(ScreenState.HOME) }
 
@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
                                     onCreateSession = {
                                         LocalSyncForegroundService.start(
                                             this@MainActivity,
-                                            "LocalSync Host Active",
+                                            "LaSync Host Active",
                                             "Broadcasting master session on LAN"
                                         )
                                         hostEngine.start()
@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
                                     onJoinSession = {
                                         LocalSyncForegroundService.start(
                                             this@MainActivity,
-                                            "LocalSync Receiver Active",
+                                            "LaSync Receiver Active",
                                             "Discovering and syncing with master host"
                                         )
                                         receiverEngine.startDiscovery()

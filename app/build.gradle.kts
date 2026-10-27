@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.localsync.audio"
+    namespace = "com.lasync.audio"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.localsync.audio"
+        applicationId = "com.lasync.audio"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

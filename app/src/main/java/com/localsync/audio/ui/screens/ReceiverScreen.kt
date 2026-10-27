@@ -1,8 +1,5 @@
 package com.localsync.audio.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,27 +19,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Sensors
-import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -51,19 +39,23 @@ import androidx.compose.ui.unit.sp
 import com.localsync.audio.core.network.DiscoveredHost
 import com.localsync.audio.core.network.ReceiverNetworkEngine
 import com.localsync.audio.core.network.ReceiverState
-import com.localsync.audio.ui.components.LiveMetricBadge
-import com.localsync.audio.ui.components.PulseRadar
-import com.localsync.audio.ui.theme.AmberWarning
-import com.localsync.audio.ui.theme.CyanGlow
-import com.localsync.audio.ui.theme.DarkBackground
-import com.localsync.audio.ui.theme.EmeraldGlow
-import com.localsync.audio.ui.theme.RoseError
-import com.localsync.audio.ui.theme.SurfaceBorder
-import com.localsync.audio.ui.theme.SurfaceCard
+import com.localsync.audio.ui.components.LaSyncButton
+import com.localsync.audio.ui.components.LaSyncMetricCard
+import com.localsync.audio.ui.components.LaSyncRadar
+import com.localsync.audio.ui.components.LaSyncTopBar
+import com.localsync.audio.ui.components.LaSyncWaveEqualizer
+import com.localsync.audio.ui.theme.BorderNeon
+import com.localsync.audio.ui.theme.CarbonCard
+import com.localsync.audio.ui.theme.CarbonCardHighlight
+import com.localsync.audio.ui.theme.CrimsonPulse
+import com.localsync.audio.ui.theme.HyperCyan
+import com.localsync.audio.ui.theme.QuantumMint
+import com.localsync.audio.ui.theme.SolarAmber
 import com.localsync.audio.ui.theme.TextMuted
 import com.localsync.audio.ui.theme.TextPrimary
 import com.localsync.audio.ui.theme.TextSecondary
-import com.localsync.audio.ui.theme.VioletAccent
+import com.localsync.audio.ui.theme.Ultraviolet
+import com.localsync.audio.ui.theme.VoidBackground
 import java.util.Locale
 
 @Composable
@@ -73,55 +65,20 @@ fun ReceiverScreen(
     modifier: Modifier = Modifier
 ) {
     val state by engine.uiState.collectAsState()
-    var manualIp by remember { mutableStateOf("") }
-    var manualSession by remember { mutableStateOf("") }
-    var showManualDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(VoidBackground)
             .padding(20.dp)
     ) {
-        // Top Bar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = "RECEIVER MODE",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    color = VioletAccent,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = if (state.state == ReceiverState.CONNECTED) state.sessionId else "SCANNING LAN",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    color = TextPrimary
-                )
-            }
-
-            IconButton(
-                onClick = onLeave,
-                modifier = Modifier
-                    .background(SurfaceCard, CircleShape)
-                    .border(1.dp, SurfaceBorder, CircleShape)
-                    .size(40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Leave",
-                    tint = TextPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
+        // Uniform Brand Top Bar
+        LaSyncTopBar(
+            title = "LaSync",
+            subtitle = if (state.state == ReceiverState.CONNECTED) "Connected • ${state.sessionId}" else "Searching LAN",
+            tag = "LISTENER",
+            onCloseClick = onLeave
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -138,24 +95,24 @@ fun ReceiverScreen(
                             .weight(0.45f),
                         contentAlignment = Alignment.Center
                     ) {
-                        PulseRadar(
+                        LaSyncRadar(
                             size = 170.dp,
-                            tint = VioletAccent,
+                            tint = Ultraviolet,
                             isActive = state.state == ReceiverState.DISCOVERING
                         )
                     }
 
                     Text(
-                        text = if (state.state == ReceiverState.CONNECTING) "Negotiating Session..." else "Searching for Active Host...",
+                        text = if (state.state == ReceiverState.CONNECTING) "Negotiating Timeline..." else "Scanning for Active LaSync Host...",
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
 
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "Make sure the Host phone is on the same Wi-Fi router",
+                        text = "Ensure the Host phone is active on the same Wi-Fi router",
                         fontSize = 13.sp,
                         color = TextSecondary,
                         textAlign = TextAlign.Center
@@ -174,7 +131,7 @@ fun ReceiverScreen(
                             items = state.discoveredHosts,
                             key = { it.sessionId }
                         ) { host ->
-                            DiscoveredHostCard(
+                            DiscoveredHostItem(
                                 host = host,
                                 onConnect = { engine.joinSession(host) }
                             )
@@ -193,8 +150,9 @@ fun ReceiverScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(SurfaceCard, RoundedCornerShape(16.dp))
-                            .border(1.dp, SurfaceBorder, RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(CarbonCard)
+                            .border(1.dp, BorderNeon, RoundedCornerShape(16.dp))
                             .padding(16.dp)
                     ) {
                         Row(
@@ -204,13 +162,15 @@ fun ReceiverScreen(
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)
-                                    .background(VioletAccent.copy(alpha = 0.15f), CircleShape),
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Ultraviolet.copy(alpha = 0.15f))
+                                    .border(1.dp, Ultraviolet.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Sensors,
                                     contentDescription = "Connected",
-                                    tint = VioletAccent,
+                                    tint = Ultraviolet,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -225,36 +185,37 @@ fun ReceiverScreen(
                                     color = TextPrimary
                                 )
                                 Text(
-                                    text = "Locked to Master Timeline",
-                                    fontSize = 12.sp,
+                                    text = "Phase-Locked to Master Timeline",
+                                    fontSize = 11.sp,
                                     fontFamily = FontFamily.Monospace,
-                                    color = EmeraldGlow
+                                    color = QuantumMint
                                 )
                             }
 
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .background(EmeraldGlow, CircleShape)
-                            )
+                            LaSyncWaveEqualizer(tint = HyperCyan, maxHeight = 18.dp)
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
 
-                    // Main Clock Synchronization Dial
+                    // Hero Clock Synchronization Dial
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(SurfaceCard, RoundedCornerShape(24.dp))
-                            .border(1.5.dp, VioletAccent.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
-                            .padding(vertical = 32.dp, horizontal = 20.dp),
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(CarbonCard)
+                            .border(
+                                1.5.dp,
+                                Brush.linearGradient(listOf(HyperCyan, Ultraviolet)),
+                                RoundedCornerShape(24.dp)
+                            )
+                            .padding(vertical = 30.dp, horizontal = 20.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = "ESTIMATED CLOCK OFFSET",
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
                                 color = TextMuted,
@@ -265,10 +226,10 @@ fun ReceiverScreen(
 
                             Text(
                                 text = String.format(Locale.US, "%+.2f ms", state.offsetMs),
-                                fontSize = 38.sp,
+                                fontSize = 42.sp,
                                 fontWeight = FontWeight.Black,
                                 fontFamily = FontFamily.Monospace,
-                                color = CyanGlow
+                                color = HyperCyan
                             )
 
                             Spacer(modifier = Modifier.height(6.dp))
@@ -281,52 +242,44 @@ fun ReceiverScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
 
                     // Real-Time Telemetry Grid
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        LiveMetricBadge(
+                        LaSyncMetricCard(
                             label = "Round Trip",
                             value = String.format(Locale.US, "%.1f", state.rttMs),
                             unit = "ms",
-                            statusColor = if (state.rttMs < 10f) EmeraldGlow else AmberWarning,
+                            statusColor = if (state.rttMs < 10f) QuantumMint else SolarAmber,
                             modifier = Modifier.weight(1f)
                         )
-                        LiveMetricBadge(
+                        LaSyncMetricCard(
                             label = "Jitter",
                             value = String.format(Locale.US, "%.1f", state.jitterMs),
                             unit = "ms",
                             modifier = Modifier.weight(1f)
                         )
-                        LiveMetricBadge(
+                        LaSyncMetricCard(
                             label = "Packet Loss",
                             value = String.format(Locale.US, "%.1f", state.packetLossPercent),
                             unit = "%",
+                            statusColor = if (state.packetLossPercent > 2f) SolarAmber else QuantumMint,
                             modifier = Modifier.weight(1f)
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
-                    // Disconnect Button
-                    Button(
+                    // Disconnect Button using LaSyncButton
+                    LaSyncButton(
+                        text = "DISCONNECT FROM SESSION",
                         onClick = { engine.disconnect() },
-                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, SurfaceBorder, RoundedCornerShape(14.dp))
-                    ) {
-                        Text(
-                            text = "DISCONNECT FROM SESSION",
-                            color = RoseError,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
+                        isSecondary = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -355,7 +308,7 @@ fun ReceiverScreen(
 }
 
 @Composable
-private fun DiscoveredHostCard(
+private fun DiscoveredHostItem(
     host: DiscoveredHost,
     onConnect: () -> Unit
 ) {
@@ -363,8 +316,8 @@ private fun DiscoveredHostCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceCard)
-            .border(1.dp, VioletAccent.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+            .background(CarbonCard)
+            .border(1.dp, Ultraviolet.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
             .clickable(onClick = onConnect)
             .padding(16.dp)
     ) {
@@ -390,14 +343,14 @@ private fun DiscoveredHostCard(
 
             Button(
                 onClick = onConnect,
-                colors = ButtonDefaults.buttonColors(containerColor = VioletAccent),
+                colors = ButtonDefaults.buttonColors(containerColor = Ultraviolet),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(
                     text = "JOIN",
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
-                    color = DarkBackground
+                    color = VoidBackground
                 )
             }
         }

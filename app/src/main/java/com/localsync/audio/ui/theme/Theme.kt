@@ -9,41 +9,41 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = CyanGlow,
-    onPrimary = DarkBackground,
-    primaryContainer = CyanGlowSoft,
-    onPrimaryContainer = CyanGlow,
-    secondary = VioletAccent,
-    onSecondary = DarkBackground,
-    secondaryContainer = VioletAccentSoft,
-    onSecondaryContainer = VioletAccent,
-    background = DarkBackground,
+private val LaSyncColorScheme = darkColorScheme(
+    primary = HyperCyan,
+    onPrimary = VoidBackground,
+    primaryContainer = HyperCyanGlow,
+    onPrimaryContainer = HyperCyan,
+    secondary = Ultraviolet,
+    onSecondary = VoidBackground,
+    secondaryContainer = UltravioletGlow,
+    onSecondaryContainer = Ultraviolet,
+    background = VoidBackground,
     onBackground = TextPrimary,
-    surface = SurfaceDark,
+    surface = CarbonCard,
     onSurface = TextPrimary,
-    surfaceVariant = SurfaceCard,
+    surfaceVariant = CarbonCardHighlight,
     onSurfaceVariant = TextSecondary,
-    outline = SurfaceBorder
+    outline = BorderNeon
 )
 
 @Composable
-fun LocalSyncTheme(
+fun LaSyncTheme(
     content: @Composable () -> Unit
 ) {
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
-            window.statusBarColor = DarkBackground.toArgb()
-            window.navigationBarColor = DarkBackground.toArgb()
+            window.statusBarColor = VoidBackground.toArgb()
+            window.navigationBarColor = VoidBackground.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
             WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
         }
     }
 
     MaterialTheme(
-        colorScheme = DarkColorScheme,
+        colorScheme = LaSyncColorScheme,
         typography = Typography,
         content = content
     )

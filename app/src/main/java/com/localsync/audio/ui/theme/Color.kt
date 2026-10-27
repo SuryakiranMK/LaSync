@@ -2,22 +2,28 @@ package com.localsync.audio.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val DarkBackground = Color(0xFF080C14)
-val SurfaceDark = Color(0xFF101726)
-val SurfaceBorder = Color(0xFF1E293B)
-val SurfaceCard = Color(0xFF141E33)
+// LaSync Brand Palette: "Cyber-Acoustic Precision"
+val VoidBackground = Color(0xFF060811)
+val CarbonCard = Color(0xFF0D1322)
+val CarbonCardHighlight = Color(0xFF141C30)
+val BorderNeon = Color(0xFF1A253D)
+val BorderGlowCyan = Color(0x3300F2FE)
+val BorderGlowViolet = Color(0x339D4EDD)
 
-val CyanGlow = Color(0xFF00F0FF)
-val CyanGlowSoft = Color(0x3300F0FF)
-val VioletAccent = Color(0xFFA855F7)
-val VioletAccentSoft = Color(0x33A855F7)
+// Brand Accents
+val HyperCyan = Color(0xFF00F2FE)
+val HyperCyanGlow = Color(0x2A00F2FE)
+val Ultraviolet = Color(0xFF9D4EDD)
+val UltravioletGlow = Color(0x2A9D4EDD)
 
-val EmeraldGlow = Color(0xFF10B981)
-val EmeraldSoft = Color(0x2210B981)
-val AmberWarning = Color(0xFFF59E0B)
-val AmberSoft = Color(0x22F59E0B)
-val RoseError = Color(0xFFEF4444)
+// Status & Telemetry
+val QuantumMint = Color(0xFF00F5A0)
+val QuantumMintGlow = Color(0x2200F5A0)
+val SolarAmber = Color(0xFFFFB703)
+val SolarAmberGlow = Color(0x22FFB703)
+val CrimsonPulse = Color(0xFFFF0055)
 
-val TextPrimary = Color(0xFFF8FAFC)
-val TextSecondary = Color(0xFF94A3B8)
-val TextMuted = Color(0xFF64748B)
+// Typography
+val TextPrimary = Color(0xFFFFFFFF)
+val TextSecondary = Color(0xFF8E9BB5)
+val TextMuted = Color(0xFF53627E)

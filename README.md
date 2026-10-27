@@ -1,14 +1,29 @@
-# LocalSync Audio 🎵📡
+# LaSync 🎵📡
 
-LocalSync Audio is an offline, synchronized, one-to-many audio distribution system for Android. A single **Host** phone plays audio and streams timestamped Opus frames over local Wi-Fi to **N Receiver** phones. Each receiver independently routes audio to its own Bluetooth headphones and synchronizes playback against the host's master timeline using sub-millisecond clock synchronization, a jitter buffer, micro-drift correction, and per-device Bluetooth acoustic offset calibration.
+<p align="center">
+  <img src="logo.jpg" alt="LaSync Logo" width="160" style="border-radius: 36px; box-shadow: 0 8px 32px rgba(0, 242, 254, 0.3);" />
+</p>
+
+<p align="center">
+  <b>Local Acoustic Synchronizer</b><br/>
+  <i>Phase-Locked Multi-Device Audio Timeline Distribution</i>
+</p>
 
 ---
 
-## 🏛 Architecture
+## 🏛 Technical Expansion
+**LaSync** stands for:
+* **L**ocal **A**udio **Sync**hronization Engine
+* **L**ow-latency **A**coustic **Sync**hronizer
+* **L.A.S.Y.N.C.** $\rightarrow$ **L**ocal **A**coustic **SYN**chronous **C**ast
+
+---
+
+## 🏛 System Architecture
 
 ```text
                          HOST PHONE
-                      🎵 Master Clock
+                    🎵 Master Clock Node
                             │
                      UDP Control (8888)
                      UDP Audio   (8889)
@@ -26,15 +41,24 @@ LocalSync Audio is an offline, synchronized, one-to-many audio distribution syst
 
 ---
 
-## 🚀 Status: Phase 1 (Completed)
+## 🎨 Visual Identity & Custom Design System
 
-- **Transport**: Real-time UDP socket engine on port `8888`.
+LaSync features a proprietary **"Cyber-Acoustic Precision"** design language:
+- **Palette**: Void Obsidian (`#060811`), Frosted Carbon Glass (`#0D1322`), HyperCyan (`#00F2FE`), Ultraviolet (`#9D4EDD`), and Quantum Mint (`#00F5A0`).
+- **Harmonic Wave Equalizer**: A 5-bar live acoustic visualizer that breathes with audio timeline events.
+- **Concentric Acoustic Radar**: Multi-ring ripple animations that reflect discovery and link health.
+- **Phase-Lock Latency Dial**: Hero gauge showing sub-millisecond hardware clock offsets in real time.
+
+---
+
+## 🚀 Status: Phase 1 (Completed & Tested)
+
+- **Transport**: Real-time non-blocking UDP socket engine on port `8888`.
 - **Discovery**: Automatic Host beacon broadcasting (`255.255.255.255` & subnet) and client discovery.
-- **Clock Synchronization**: Sub-millisecond NTP-lite 4-timestamp engine using `SystemClock.elapsedRealtimeNanos()`.
+- **Clock Synchronization**: Sub-millisecond NTP-lite 4-timestamp engine using monotonic `SystemClock.elapsedRealtimeNanos()`.
 - **Metrics**: Real-time RTT calculation, RFC 3550 Jitter estimation, packet loss tracking, and sliding-window median spike rejection.
 - **Multi-Receiver Scalability**: Host tracks N receivers concurrently with automatic heartbeat pruning.
 - **Background Execution**: Android Foreground Service with `WIFI_MODE_FULL_LOW_LATENCY` and `PARTIAL_WAKE_LOCK`.
-- **UI**: Jetpack Compose OLED dark aesthetic with animated radar pulse indicators and live telemetry cards.
 
 ---
 
@@ -43,13 +67,12 @@ LocalSync Audio is an offline, synchronized, one-to-many audio distribution syst
 ### Requirements
 - Android SDK (API 35 compileSdk, minSdk 26)
 - JDK 21 LTS
-- Physical Android devices or emulators on the same Wi-Fi router / LAN
 
 ### Build APK
 ```bash
 ./gradlew assembleDebug
 ```
-The debug APK is generated at:
+Output:
 `app/build/outputs/apk/debug/app-debug.apk`
 
 ### Run Unit Tests
@@ -59,7 +82,7 @@ The debug APK is generated at:
 
 ### Install via ADB
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r LaSync.apk
 ```
 
 ---
@@ -67,6 +90,6 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ## 📱 How to Use (Phase 1)
 
 1. Connect both phones to the same Wi-Fi network.
-2. **Phone 1 (Host)**: Open app → Tap **[ CREATE SESSION ]**.
-3. **Phone 2 (Receiver)**: Open app → Tap **[ JOIN SESSION ]** → Tap **[ JOIN ]** on the discovered host.
+2. **Phone 1 (Host)**: Open LaSync → Tap **[ CREATE SESSION ]**.
+3. **Phone 2 (Receiver)**: Open LaSync → Tap **[ JOIN SESSION ]** → Tap **[ JOIN ]** on the discovered host.
 4. Watch the live synchronization telemetry (RTT, Jitter, Clock Offset, Packet Loss) update in real time!

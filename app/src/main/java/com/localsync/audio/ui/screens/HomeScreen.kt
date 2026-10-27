@@ -1,8 +1,12 @@
 package com.localsync.audio.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,36 +24,40 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiTethering
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lasync.audio.R
 import com.localsync.audio.core.network.NetworkUtils
-import com.localsync.audio.ui.theme.CyanGlow
-import com.localsync.audio.ui.theme.DarkBackground
-import com.localsync.audio.ui.theme.EmeraldGlow
-import com.localsync.audio.ui.theme.SurfaceBorder
-import com.localsync.audio.ui.theme.SurfaceCard
+import com.localsync.audio.ui.components.LaSyncWaveEqualizer
+import com.localsync.audio.ui.theme.BorderNeon
+import com.localsync.audio.ui.theme.CarbonCard
+import com.localsync.audio.ui.theme.CarbonCardHighlight
+import com.localsync.audio.ui.theme.HyperCyan
+import com.localsync.audio.ui.theme.HyperCyanGlow
+import com.localsync.audio.ui.theme.QuantumMint
 import com.localsync.audio.ui.theme.TextMuted
 import com.localsync.audio.ui.theme.TextPrimary
 import com.localsync.audio.ui.theme.TextSecondary
-import com.localsync.audio.ui.theme.VioletAccent
+import com.localsync.audio.ui.theme.Ultraviolet
+import com.localsync.audio.ui.theme.UltravioletGlow
+import com.localsync.audio.ui.theme.VoidBackground
 
 @Composable
 fun HomeScreen(
@@ -57,60 +65,92 @@ fun HomeScreen(
     onJoinSession: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val localIp = NetworkUtils.getLocalIpAddress() ?: "Checking Wi-Fi..."
+    val localIp = NetworkUtils.getLocalIpAddress() ?: "Wi-Fi connecting..."
+
+    val transition = rememberInfiniteTransition(label = "hero_glow")
+    val glowAlpha by transition.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 0.65f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_alpha"
+    )
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(VoidBackground)
             .padding(24.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header Section
+            // Brand Hero
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 32.dp)
+                modifier = Modifier.padding(top = 28.dp)
             ) {
+                // Matching Logo Container with Breathing Radial Halo
                 Box(
                     modifier = Modifier
-                        .size(68.dp)
-                        .background(
-                            brush = Brush.radialGradient(
-                                colors = listOf(CyanGlow.copy(alpha = 0.25f), Color.Transparent)
-                            ),
-                            shape = CircleShape
-                        )
-                        .border(1.5.dp, CyanGlow.copy(alpha = 0.6f), CircleShape),
+                        .size(100.dp)
+                        .clip(RoundedCornerShape(26.dp))
+                        .background(CarbonCard)
+                        .border(
+                            2.dp,
+                            Brush.linearGradient(listOf(HyperCyan.copy(alpha = glowAlpha), Ultraviolet)),
+                            RoundedCornerShape(26.dp)
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.GraphicEq,
-                        contentDescription = "Audio Sync",
-                        tint = CyanGlow,
-                        modifier = Modifier.size(34.dp)
+                    Image(
+                        painter = painterResource(id = R.drawable.lasync_logo),
+                        contentDescription = "LaSync Logo",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(26.dp))
                     )
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Text(
-                    text = "LOCALSYNC AUDIO",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 2.sp,
-                    color = TextPrimary
-                )
+                // Brand Name
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "LaSync",
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.SansSerif,
+                        letterSpacing = 1.sp,
+                        color = TextPrimary
+                    )
+
+                    LaSyncWaveEqualizer(tint = HyperCyan, maxHeight = 22.dp)
+                }
 
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "Synchronized Multi-Device Audio Timeline",
-                    fontSize = 14.sp,
+                    text = "LOCAL ACOUSTIC SYNCHRONIZER",
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp,
+                    color = HyperCyan
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Phase-Locked Multi-Device Audio Timeline",
+                    fontSize = 13.sp,
                     color = TextSecondary,
                     textAlign = TextAlign.Center
                 )
@@ -119,23 +159,23 @@ fun HomeScreen(
             // Mode Selection Action Cards
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                ModeCard(
+                ModeSelectionCard(
                     title = "CREATE SESSION",
-                    subtitle = "Act as Master Host & transmit audio timeline to nearby phones",
-                    badgeText = "HOST MODE",
+                    subtitle = "Master Clock Host • Broadcasts precision timeline & Opus audio stream",
+                    badge = "MASTER TRANSMITTER",
                     icon = Icons.Default.WifiTethering,
-                    accentColor = CyanGlow,
+                    accentColor = HyperCyan,
                     onClick = onCreateSession
                 )
 
-                ModeCard(
+                ModeSelectionCard(
                     title = "JOIN SESSION",
-                    subtitle = "Discover nearby host and lock into the master clock timeline",
-                    badgeText = "RECEIVER MODE",
+                    subtitle = "Receiver Client • Locks to master clock with sub-ms precision & acoustic offset",
+                    badge = "ACOUSTIC LISTENER",
                     icon = Icons.Default.Headphones,
-                    accentColor = VioletAccent,
+                    accentColor = Ultraviolet,
                     onClick = onJoinSession
                 )
             }
@@ -144,36 +184,47 @@ fun HomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SurfaceCard, RoundedCornerShape(12.dp))
-                    .border(1.dp, SurfaceBorder, RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CarbonCard)
+                    .border(1.dp, BorderNeon, RoundedCornerShape(14.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(
-                            if (localIp.contains(".")) EmeraldGlow else TextMuted,
-                            CircleShape
-                        )
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                if (localIp.contains(".")) QuantumMint else TextMuted,
+                                CircleShape
+                            )
+                    )
 
-                Spacer(modifier = Modifier.width(10.dp))
+                    Icon(
+                        imageVector = Icons.Default.Wifi,
+                        contentDescription = "Wi-Fi",
+                        tint = TextMuted,
+                        modifier = Modifier.size(16.dp)
+                    )
 
-                Icon(
-                    imageVector = Icons.Default.Wifi,
-                    contentDescription = "Wi-Fi",
-                    tint = TextMuted,
-                    modifier = Modifier.size(16.dp)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "LAN: $localIp",
+                        fontSize = 13.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = TextSecondary
+                    )
+                }
 
                 Text(
-                    text = "LAN IP: $localIp",
-                    fontSize = 13.sp,
+                    text = "PHASE 1",
+                    fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,
-                    color = TextSecondary
+                    fontWeight = FontWeight.Bold,
+                    color = HyperCyan
                 )
             }
         }
@@ -181,10 +232,10 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ModeCard(
+private fun ModeSelectionCard(
     title: String,
     subtitle: String,
-    badgeText: String,
+    badge: String,
     icon: ImageVector,
     accentColor: Color,
     onClick: () -> Unit
@@ -193,8 +244,8 @@ private fun ModeCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(SurfaceCard)
-            .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+            .background(CarbonCard)
+            .border(1.5.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(20.dp)
     ) {
@@ -205,8 +256,10 @@ private fun ModeCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
-                        .background(accentColor.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(accentColor.copy(alpha = 0.15f))
+                        .border(1.dp, accentColor.copy(alpha = 0.3f), RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -221,12 +274,12 @@ private fun ModeCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = badgeText,
-                        fontSize = 11.sp,
+                        text = badge,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
-                        color = accentColor,
-                        letterSpacing = 1.sp
+                        letterSpacing = 1.sp,
+                        color = accentColor
                     )
                     Text(
                         text = title,
