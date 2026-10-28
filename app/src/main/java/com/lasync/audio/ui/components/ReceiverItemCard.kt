@@ -1,4 +1,4 @@
-﻿package com.lasync.audio.ui.components
+package com.lasync.audio.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -136,10 +136,11 @@ fun ReceiverItemCard(
                     unit = "ms",
                     modifier = Modifier.weight(1f)
                 )
+                val (offsetVal, offsetUnit) = com.lasync.audio.core.network.NetworkUtils.formatClockOffset(receiver.offsetMs)
                 LaSyncMetricCard(
                     label = "Offset",
-                    value = String.format(Locale.US, "%+.1f", receiver.offsetMs),
-                    unit = "ms",
+                    value = offsetVal,
+                    unit = offsetUnit,
                     modifier = Modifier.weight(1f)
                 )
                 LaSyncMetricCard(

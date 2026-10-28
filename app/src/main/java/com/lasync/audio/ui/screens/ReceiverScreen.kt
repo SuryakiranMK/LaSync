@@ -1,4 +1,4 @@
-﻿package com.lasync.audio.ui.screens
+package com.lasync.audio.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -224,20 +224,30 @@ fun ReceiverScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
+                            val (formattedVal, formattedUnit) = com.lasync.audio.core.network.NetworkUtils.formatClockOffset(state.offsetMs)
                             Text(
-                                text = String.format(Locale.US, "%+.2f ms", state.offsetMs),
-                                fontSize = 42.sp,
+                                text = "$formattedVal $formattedUnit",
+                                fontSize = if (formattedVal.length > 7) 30.sp else 38.sp,
                                 fontWeight = FontWeight.Black,
                                 fontFamily = FontFamily.Monospace,
-                                color = HyperCyan
+                                color = HyperCyan,
+                                maxLines = 1,
+                                softWrap = false
                             )
 
                             Spacer(modifier = Modifier.height(6.dp))
 
                             Text(
-                                text = if (state.offsetMs >= 0) "Local clock ahead of host" else "Local clock behind host",
-                                fontSize = 13.sp,
-                                color = TextSecondary
+                                text = if (kotlin.math.abs(state.offsetMs) >= 10_000.0) {
+                                    if (state.offsetMs >= 0) "Host boot delta (+epoch) • Jitter ${String.format(Locale.US, "%.1f", state.jitterMs)} ms"
+                                    else "Host boot delta (-epoch) • Jitter ${String.format(Locale.US, "%.1f", state.jitterMs)} ms"
+                                } else {
+                                    if (state.offsetMs >= 0) "Local clock ahead of host • Jitter ${String.format(Locale.US, "%.1f", state.jitterMs)} ms"
+                                    else "Local clock behind host • Jitter ${String.format(Locale.US, "%.1f", state.jitterMs)} ms"
+                                },
+                                fontSize = 12.sp,
+                                color = TextSecondary,
+                                textAlign = TextAlign.Center
                             )
                         }
                     }

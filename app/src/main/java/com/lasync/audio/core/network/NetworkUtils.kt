@@ -1,4 +1,4 @@
-﻿package com.lasync.audio.core.network
+package com.lasync.audio.core.network
 
 import java.net.Inet4Address
 import java.net.InetAddress
@@ -51,5 +51,17 @@ object NetworkUtils {
             sb.append(chars[rnd.nextInt(chars.length)])
         }
         return sb.toString()
+    }
+
+    fun formatClockOffset(offsetMs: Float): Pair<String, String> = formatClockOffset(offsetMs.toDouble())
+
+    fun formatClockOffset(offsetMs: Double): Pair<String, String> {
+        val abs = kotlin.math.abs(offsetMs)
+        return when {
+            abs >= 3_600_000.0 -> Pair(String.format(java.util.Locale.US, "%+.1f", offsetMs / 3_600_000.0), "h")
+            abs >= 60_000.0 -> Pair(String.format(java.util.Locale.US, "%+.1f", offsetMs / 60_000.0), "m")
+            abs >= 10_000.0 -> Pair(String.format(java.util.Locale.US, "%+.1f", offsetMs / 1_000.0), "s")
+            else -> Pair(String.format(java.util.Locale.US, "%+.1f", offsetMs), "ms")
+        }
     }
 }

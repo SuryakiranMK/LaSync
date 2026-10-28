@@ -1,4 +1,4 @@
-﻿package com.lasync.audio.ui.components
+package com.lasync.audio.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -392,9 +392,11 @@ fun LaSyncMetricCard(
 
         Text(
             text = if (unit.isNotEmpty()) "$value $unit" else value,
-            fontSize = 15.sp,
+            fontSize = 14.sp,
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            softWrap = false,
             color = if (statusColor != QuantumMint) statusColor else TextPrimary
         )
     }
