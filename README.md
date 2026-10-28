@@ -10,11 +10,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SuryakiranMK/LaSync/releases/download/v1.1.0-phase2/LaSync.apk">
-    <img src="https://img.shields.io/badge/Download%20APK-v1.1.0--phase2-00F2FE?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
+  <a href="https://github.com/SuryakiranMK/LaSync/releases/download/v1.0.1/LaSync.apk">
+    <img src="https://img.shields.io/badge/Download%20APK-v1.0.1-00F2FE?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
   </a>
   <a href="https://github.com/SuryakiranMK/LaSync/releases/latest">
-    <img src="https://img.shields.io/badge/Release-v1.1.0--phase2-9D4EDD?style=for-the-badge" alt="Release Version" />
+    <img src="https://img.shields.io/badge/Release-v1.0.1-9D4EDD?style=for-the-badge" alt="Release Version" />
   </a>
 </p>
 
