@@ -24,12 +24,19 @@ class LaSyncForegroundService : Service() {
         const val ACTION_STOP = "ACTION_STOP"
         const val EXTRA_TITLE = "EXTRA_TITLE"
         const val EXTRA_MESSAGE = "EXTRA_MESSAGE"
+        const val EXTRA_MEDIA_PROJECTION = "EXTRA_MEDIA_PROJECTION"
 
-        fun start(context: Context, title: String, message: String) {
+        fun start(
+            context: Context,
+            title: String,
+            message: String,
+            withMediaProjection: Boolean = false
+        ) {
             val intent = Intent(context, LaSyncForegroundService::class.java).apply {
                 action = ACTION_START
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_MESSAGE, message)
+                putExtra(EXTRA_MEDIA_PROJECTION, withMediaProjection)
             }
             context.startForegroundService(intent)
         }
@@ -49,8 +56,21 @@ class LaSyncForegroundService : Service() {
             ACTION_START -> {
                 val title = intent.getStringExtra(EXTRA_TITLE) ?: "LaSync Audio"
                 val message = intent.getStringExtra(EXTRA_MESSAGE) ?: "Synchronizing over local Wi-Fi"
+                val withMediaProjection = intent.getBooleanExtra(EXTRA_MEDIA_PROJECTION, false)
+
                 acquireLocks()
-                startForeground(NOTIFICATION_ID, buildNotification(title, message))
+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    val fgsType = if (withMediaProjection) {
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE or
+                                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                    } else {
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+                    }
+                    startForeground(NOTIFICATION_ID, buildNotification(title, message), fgsType)
+                } else {
+                    startForeground(NOTIFICATION_ID, buildNotification(title, message))
+                }
             }
             ACTION_STOP -> {
                 releaseLocks()

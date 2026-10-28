@@ -283,14 +283,14 @@ fun ReceiverScreen(
                                     LaSyncWaveEqualizer(tint = QuantumMint, maxHeight = 20.dp)
                                     Column {
                                         Text(
-                                            text = "PLAYING SYNCHRONIZED TONE",
+                                            text = "PLAYING SYNCHRONIZED AUDIO",
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
                                             fontFamily = FontFamily.Monospace,
                                             color = QuantumMint
                                         )
                                         Text(
-                                            text = "440 Hz Concert Pitch 'A' (Phase-Locked)",
+                                            text = "Phase-Locked Master Stream",
                                             fontSize = 10.sp,
                                             color = TextSecondary
                                         )

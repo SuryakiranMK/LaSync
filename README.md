@@ -10,11 +10,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SuryakiranMK/LaSync/releases/download/v1.0.1/LaSync.apk">
-    <img src="https://img.shields.io/badge/Download%20APK-v1.0.1-00F2FE?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
+  <a href="https://github.com/SuryakiranMK/LaSync/releases/download/v1.0.2/LaSync.apk">
+    <img src="https://img.shields.io/badge/Download%20APK-v1.0.2-00F2FE?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
   </a>
   <a href="https://github.com/SuryakiranMK/LaSync/releases/latest">
-    <img src="https://img.shields.io/badge/Release-v1.0.1-9D4EDD?style=for-the-badge" alt="Release Version" />
+    <img src="https://img.shields.io/badge/Release-v1.0.2-9D4EDD?style=for-the-badge" alt="Release Version" />
   </a>
 </p>
 
@@ -60,14 +60,21 @@ LaSync features a proprietary **"Cyber-Acoustic Precision"** design language:
 
 ---
 
-## 🚀 Status: Phase 1 (Completed & Tested)
-
+## 🚀 Features & Capabilities
+ 
+### Phase 1: High-Precision LAN Time Sync
 - **Transport**: Real-time non-blocking UDP socket engine on port `8888`.
 - **Discovery**: Automatic Host beacon broadcasting (`255.255.255.255` & subnet) and client discovery.
 - **Clock Synchronization**: Sub-millisecond NTP-lite 4-timestamp engine using monotonic `SystemClock.elapsedRealtimeNanos()`.
 - **Metrics**: Real-time RTT calculation, RFC 3550 Jitter estimation, packet loss tracking, and sliding-window median spike rejection.
 - **Multi-Receiver Scalability**: Host tracks N receivers concurrently with automatic heartbeat pruning.
 - **Background Execution**: Android Foreground Service with `WIFI_MODE_FULL_LOW_LATENCY` and `PARTIAL_WAKE_LOCK`.
+
+### Phase 2: Synchronized Audio Streaming & Music Sharing
+- **System Music Sharing (Spotify, YouTube, Games)**: Share all live device audio from your phone to connected listeners in real time using Google's `AudioPlaybackCapture` API (excluding phone calls for privacy).
+- **Acoustic Benchmark Mode**: 440 Hz concert pitch 'A' sine wave generator for verifying microsecond-accurate acoustic phase alignment.
+- **Zero "Rain Noise" Jitter Buffer**: Dedicated 200 ms concurrent memory buffer with blocking full-frame stereo writes, eliminating 16-bit PCM byte-misalignment and buffer underrun crackles.
+- **Multi-Client UDP Audio Multicast**: Broadcasts raw 48 kHz 16-bit PCM frames on Port `8889` across the entire local Wi-Fi subnet.
 
 ---
 
@@ -96,9 +103,10 @@ adb install -r LaSync.apk
 
 ---
 
-## 📱 How to Use (Phase 1)
+## 📱 How to Use
 
-1. Connect both phones to the same Wi-Fi network.
+1. Connect all phones to the same Wi-Fi network.
 2. **Phone 1 (Host)**: Open LaSync → Tap **[ CREATE SESSION ]**.
-3. **Phone 2 (Receiver)**: Open LaSync → Tap **[ JOIN SESSION ]** → Tap **[ JOIN ]** on the discovered host.
-4. Watch the live synchronization telemetry (RTT, Jitter, Clock Offset, Packet Loss) update in real time!
+3. **Phone 2+ (Receivers)**: Open LaSync → Tap **[ JOIN SESSION ]** → Tap **[ JOIN ]** on the discovered host.
+4. **To Share Music**: On the Host, tap **[ SHARE SYSTEM MUSIC ]**, approve the permission prompt, open Spotify or YouTube, and play any song!
+5. **To Test Tone Sync**: Tap **[ START 440 Hz ACOUSTIC TEST ]** to hear pure, synchronized concert pitch 'A' playing across all devices simultaneously!

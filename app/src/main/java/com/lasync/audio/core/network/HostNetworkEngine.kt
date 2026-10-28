@@ -27,7 +27,8 @@ data class HostUiState(
     val receivers: List<ReceiverNode> = emptyList(),
     val totalPingsAnswered: Long = 0L,
     val isAudioStreaming: Boolean = false,
-    val audioFramesSent: Long = 0L
+    val audioFramesSent: Long = 0L,
+    val activeAudioSource: com.lasync.audio.core.audio.HostAudioSource = com.lasync.audio.core.audio.HostAudioSource.IDLE
 )
 
 class HostNetworkEngine(
@@ -65,6 +66,11 @@ class HostNetworkEngine(
                     _uiState.value = _uiState.value.copy(audioFramesSent = frames)
                 }
             }
+            launch {
+                audioEngine.activeSource.collect { source ->
+                    _uiState.value = _uiState.value.copy(activeAudioSource = source)
+                }
+            }
         }
     }
 
@@ -76,12 +82,16 @@ class HostNetworkEngine(
         audioEngine.stopTone()
     }
 
-    fun toggleToneTest() {
-        if (audioEngine.isStreaming.value) {
-            stopToneTest()
-        } else {
-            startToneTest()
-        }
+    fun startSystemAudio(mediaProjection: android.media.projection.MediaProjection) {
+        audioEngine.startSystemAudio(mediaProjection)
+    }
+
+    fun stopSystemAudio() {
+        audioEngine.stopSystemAudio()
+    }
+
+    fun stopAllAudio() {
+        audioEngine.stopAll()
     }
 
     fun start(customSessionId: String? = null) {
@@ -282,7 +292,7 @@ class HostNetworkEngine(
     }
 
     fun stop() {
-        audioEngine.stopTone()
+        audioEngine.stopAll()
         beaconJob?.cancel()
         receiveJob?.cancel()
         pruneJob?.cancel()

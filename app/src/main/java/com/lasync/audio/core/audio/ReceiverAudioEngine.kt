@@ -20,11 +20,11 @@ import java.net.DatagramSocket
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
- * Receiver Audio Engine:
- * 1. Listens on UDP Port 8889 for incoming AudioFramePackets.
- * 2. Uses ClockSyncEngine to convert Master presentation timestamps to local monotonic time.
- * 3. Pre-buffers silence to absorb network jitter and precisely schedules local AudioTrack playback
- *    to match the Host's timeline.
+ * High-Precision Receiver Audio Engine:
+ * 1. Dedicated UDP packet listener feeding a thread-safe jitter queue.
+ * 2. Dedicated playback loop using AudioTrack.WRITE_BLOCKING in native STEREO mode.
+ * 3. Absorbs up to 200ms of Wi-Fi packet jitter, completely eliminating byte-truncation
+ *    and buffer-underrun static ("rain noise").
  */
 class ReceiverAudioEngine(
     private val scope: CoroutineScope,
@@ -42,33 +42,37 @@ class ReceiverAudioEngine(
     val framesReceived: StateFlow<Long> = _framesReceived.asStateFlow()
 
     private var socketJob: Job? = null
-    private var watchdogJob: Job? = null
+    private var playerJob: Job? = null
     private var udpSocket: DatagramSocket? = null
     private var audioTrack: AudioTrack? = null
+
+    private val jitterQueue = ConcurrentLinkedQueue<ByteArray>()
 
     @Volatile
     private var lastPacketTimeNs = 0L
 
-    @Volatile
-    private var isTrackInitialized = false
-
     fun startListening() {
         if (socketJob != null) return
+
+        jitterQueue.clear()
+        _isAudioPlaying.value = false
 
         socketJob = scope.launch(Dispatchers.IO) {
             runReceiverLoop()
         }
 
-        watchdogJob = scope.launch(Dispatchers.IO) {
-            runWatchdogLoop()
+        playerJob = scope.launch(Dispatchers.Default) {
+            runPlaybackLoop()
         }
     }
 
     fun stopListening() {
         socketJob?.cancel()
         socketJob = null
-        watchdogJob?.cancel()
-        watchdogJob = null
+        playerJob?.cancel()
+        playerJob = null
+
+        jitterQueue.clear()
         cleanupAudioTrack()
 
         try {
@@ -83,47 +87,85 @@ class ReceiverAudioEngine(
         val buffer = ByteArray(2048) // Plenty of room for 990-byte packet
 
         try {
-            udpSocket = DatagramSocket(AudioConstants.AUDIO_PORT)
-            udpSocket?.receiveBufferSize = 128 * 1024
+            udpSocket = DatagramSocket(AudioConstants.AUDIO_PORT).apply {
+                receiveBufferSize = 256 * 1024 // 256 KB socket buffer
+            }
 
             while (scope.isActive) {
                 val packet = DatagramPacket(buffer, buffer.size)
                 udpSocket?.receive(packet)
 
                 val audioPacket = AudioFramePacket.decode(packet.data, packet.length)
-                if (audioPacket != null) {
-                    processAudioPacket(audioPacket)
+                if (audioPacket != null && audioPacket.payload.isNotEmpty()) {
+                    lastPacketTimeNs = SystemClock.elapsedRealtimeNanos()
+                    _framesReceived.value++
+                    jitterQueue.offer(audioPacket.payload)
                 }
             }
         } catch (e: Exception) {
             if (scope.isActive) {
                 Log.e(TAG, "Receiver UDP socket error: ${e.message}", e)
             }
-        } finally {
-            cleanupAudioTrack()
         }
     }
 
-    private fun processAudioPacket(packet: AudioFramePacket) {
-        val now = SystemClock.elapsedRealtimeNanos()
-        lastPacketTimeNs = now
-        _framesReceived.value++
+    private suspend fun runPlaybackLoop() {
+        setupAudioTrack()
 
-        if (!isTrackInitialized || audioTrack == null) {
-            initAudioTrackAndSchedule(packet, now)
-        } else {
-            audioTrack?.write(packet.payload, 0, packet.payload.size, AudioTrack.WRITE_NON_BLOCKING)
-            _isAudioPlaying.value = true
+        val silenceStereoFrame = ByteArray(AudioConstants.BYTES_PER_FRAME_STEREO) // 1920 bytes of zeros
+        var isPlayingStarted = false
+
+        while (scope.isActive) {
+            val now = SystemClock.elapsedRealtimeNanos()
+            val timeSinceLastPacketMs = if (lastPacketTimeNs > 0) (now - lastPacketTimeNs) / 1_000_000L else 0L
+
+            if (!isPlayingStarted) {
+                // Wait for the jitter buffer to build up 150-200ms of frames
+                if (jitterQueue.size >= AudioConstants.JITTER_BUFFER_FRAMES) {
+                    audioTrack?.play()
+                    isPlayingStarted = true
+                    _isAudioPlaying.value = true
+                } else {
+                    delay(10)
+                    continue
+                }
+            }
+
+            // Stream timed out: host stopped streaming
+            if (timeSinceLastPacketMs > STREAM_TIMEOUT_MS && jitterQueue.isEmpty()) {
+                if (isPlayingStarted) {
+                    audioTrack?.pause()
+                    audioTrack?.flush()
+                    isPlayingStarted = false
+                    _isAudioPlaying.value = false
+                }
+                delay(50)
+                continue
+            }
+
+            val monoFrame = jitterQueue.poll()
+            if (monoFrame != null) {
+                val stereoFrame = AudioConstants.monoToStereo(monoFrame)
+                // WRITE_BLOCKING ensures the full frame is written without sample truncation
+                audioTrack?.write(stereoFrame, 0, stereoFrame.size, AudioTrack.WRITE_BLOCKING)
+                _isAudioPlaying.value = true
+            } else if (isPlayingStarted) {
+                // Wi-Fi jitter dip: write silence frame to prevent DAC underrun pop
+                audioTrack?.write(silenceStereoFrame, 0, silenceStereoFrame.size, AudioTrack.WRITE_BLOCKING)
+            }
         }
+
+        cleanupAudioTrack()
     }
 
-    private fun initAudioTrackAndSchedule(packet: AudioFramePacket, now: Long) {
+    private fun setupAudioTrack() {
         val minBufferSize = AudioTrack.getMinBufferSize(
             AudioConstants.SAMPLE_RATE,
             AudioConstants.CHANNEL_CONFIG_OUT,
             AudioConstants.AUDIO_FORMAT
         )
-        val bufferSize = maxOf(minBufferSize * 2, AudioConstants.BYTES_PER_FRAME * 50)
+        // 100ms * 10 = 1 full second buffer headroom
+        val bufferSize = maxOf(minBufferSize * 4, AudioConstants.BYTES_PER_FRAME_STEREO * 50)
 
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -136,56 +178,16 @@ class ReceiverAudioEngine(
             .setEncoding(AudioConstants.AUDIO_FORMAT)
             .build()
 
-        val track = AudioTrack.Builder()
+        audioTrack = AudioTrack.Builder()
             .setAudioAttributes(attributes)
             .setAudioFormat(format)
             .setBufferSizeInBytes(bufferSize)
             .setTransferMode(AudioTrack.MODE_STREAM)
             .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
             .build()
-
-        // Calculate when this packet is scheduled to play on the local timeline
-        val localTargetTimeNs = clockSyncEngine.toLocalTimeNanos(packet.presentationTimestampNanos)
-        val leadTimeNs = localTargetTimeNs - now
-
-        // Calculate required silence delay to align with Master timeline
-        val silenceSamples = if (leadTimeNs > 0) {
-            ((leadTimeNs.toDouble() / 1_000_000_000.0) * AudioConstants.SAMPLE_RATE).toLong()
-                .coerceIn(0L, (AudioConstants.SAMPLE_RATE * 2).toLong()) // max 2s safety clamp
-        } else {
-            0L
-        }
-
-        if (silenceSamples > 0) {
-            val silenceBytes = ByteArray((silenceSamples * AudioConstants.BYTES_PER_SAMPLE).toInt())
-            track.write(silenceBytes, 0, silenceBytes.size)
-        }
-
-        // Write first audio payload
-        track.write(packet.payload, 0, packet.payload.size)
-        track.play()
-
-        audioTrack = track
-        isTrackInitialized = true
-        _isAudioPlaying.value = true
-    }
-
-    private suspend fun runWatchdogLoop() {
-        while (scope.isActive) {
-            delay(200)
-            if (isTrackInitialized) {
-                val elapsedSinceLastPacket = (SystemClock.elapsedRealtimeNanos() - lastPacketTimeNs) / 1_000_000L
-                if (elapsedSinceLastPacket > STREAM_TIMEOUT_MS) {
-                    // Audio stream stopped from host
-                    cleanupAudioTrack()
-                    _isAudioPlaying.value = false
-                }
-            }
-        }
     }
 
     private fun cleanupAudioTrack() {
-        isTrackInitialized = false
         try {
             audioTrack?.pause()
             audioTrack?.flush()

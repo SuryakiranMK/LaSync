@@ -1,4 +1,4 @@
-﻿package com.lasync.audio
+package com.lasync.audio
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -30,6 +30,11 @@ import com.lasync.audio.ui.screens.ReceiverScreen
 import com.lasync.audio.ui.theme.LaSyncTheme
 import com.lasync.audio.ui.theme.VoidBackground
 
+import android.app.Activity
+import android.content.Context
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
+
 enum class ScreenState {
     HOME,
     HOST,
@@ -41,10 +46,57 @@ class MainActivity : ComponentActivity() {
     private lateinit var hostEngine: HostNetworkEngine
     private lateinit var receiverEngine: ReceiverNetworkEngine
 
+    private var pendingMediaProjectionCallback: ((MediaProjection?) -> Unit)? = null
+
+    private val mediaProjectionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            // Android 14+ requires FGS with mediaProjection type to be started BEFORE getMediaProjection
+            LaSyncForegroundService.start(
+                this,
+                "LaSync Music Share Active",
+                "Streaming system audio across LAN",
+                withMediaProjection = true
+            )
+            val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            val projection = projectionManager.getMediaProjection(result.resultCode, result.data!!)
+            pendingMediaProjectionCallback?.invoke(projection)
+        } else {
+            pendingMediaProjectionCallback?.invoke(null)
+        }
+        pendingMediaProjectionCallback = null
+    }
+
+    private val audioRecordPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            launchMediaProjectionPrompt()
+        } else {
+            pendingMediaProjectionCallback?.invoke(null)
+            pendingMediaProjectionCallback = null
+        }
+    }
+
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { _ ->
         // Notification permission handled
+    }
+
+    private fun requestMediaProjection(callback: (MediaProjection?) -> Unit) {
+        pendingMediaProjectionCallback = callback
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            launchMediaProjectionPrompt()
+        } else {
+            audioRecordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun launchMediaProjectionPrompt() {
+        val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        mediaProjectionLauncher.launch(projectionManager.createScreenCaptureIntent())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,7 +147,11 @@ class MainActivity : ComponentActivity() {
                             ScreenState.HOST -> {
                                 HostScreen(
                                     engine = hostEngine,
+                                    onRequestMediaProjection = { callback ->
+                                        requestMediaProjection(callback)
+                                    },
                                     onStopSession = {
+                                        hostEngine.stopAllAudio()
                                         hostEngine.stop()
                                         LaSyncForegroundService.stop(this@MainActivity)
                                         currentScreen = ScreenState.HOME
