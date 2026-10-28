@@ -1,4 +1,4 @@
-﻿package com.lasync.audio.ui.screens
+package com.lasync.audio.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -21,7 +21,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,17 +33,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lasync.audio.core.network.HostNetworkEngine
+import com.lasync.audio.ui.components.LaSyncButton
 import com.lasync.audio.ui.components.LaSyncRadar
 import com.lasync.audio.ui.components.LaSyncTopBar
 import com.lasync.audio.ui.components.LaSyncWaveEqualizer
 import com.lasync.audio.ui.components.ReceiverItemCard
 import com.lasync.audio.ui.theme.BorderNeon
 import com.lasync.audio.ui.theme.CarbonCard
+import com.lasync.audio.ui.theme.CrimsonPulse
 import com.lasync.audio.ui.theme.HyperCyan
 import com.lasync.audio.ui.theme.QuantumMint
 import com.lasync.audio.ui.theme.TextMuted
@@ -215,7 +222,85 @@ fun HostScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Phase 2: 440 Hz Acoustic Sync Test Controller
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(CarbonCard)
+                .border(
+                    1.dp,
+                    if (state.isAudioStreaming) Brush.linearGradient(listOf(CrimsonPulse, Ultraviolet))
+                    else Brush.linearGradient(listOf(HyperCyan.copy(alpha = 0.4f), BorderNeon)),
+                    RoundedCornerShape(20.dp)
+                )
+                .padding(14.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (state.isAudioStreaming) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            LaSyncWaveEqualizer(tint = HyperCyan, maxHeight = 18.dp)
+                            Text(
+                                text = "STREAMING 440 Hz TONE",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                color = HyperCyan
+                            )
+                        }
+
+                        Text(
+                            text = "${state.audioFramesSent} frames",
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = TextMuted
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    LaSyncButton(
+                        text = "STOP ACOUSTIC TEST",
+                        icon = Icons.Default.Stop,
+                        accentColor = CrimsonPulse,
+                        onClick = { engine.stopToneTest() },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    LaSyncButton(
+                        text = "START 440 Hz ACOUSTIC TEST",
+                        icon = Icons.Default.VolumeUp,
+                        accentColor = HyperCyan,
+                        onClick = { engine.startToneTest() },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Phase 2: Streams synchronized 440 Hz sine tone to all connected phones",
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Bottom Telemetry Summary
         Row(

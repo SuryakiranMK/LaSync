@@ -1,4 +1,4 @@
-﻿package com.lasync.audio.core.network
+package com.lasync.audio.core.network
 
 import android.os.Build
 import android.os.SystemClock
@@ -44,7 +44,9 @@ data class ReceiverUiState(
     val offsetMs: Float = 0f,
     val packetLossPercent: Float = 0f,
     val pingsCount: Long = 0L,
-    val isSynchronized: Boolean = false
+    val isSynchronized: Boolean = false,
+    val isAudioPlaying: Boolean = false,
+    val audioFramesReceived: Long = 0L
 )
 
 class ReceiverNetworkEngine(
@@ -56,7 +58,8 @@ class ReceiverNetworkEngine(
     private var heartbeatJob: Job? = null
     private var pruneDiscoveryJob: Job? = null
 
-    private val clockSyncEngine = ClockSyncEngine(windowSize = 12)
+    val clockSyncEngine = ClockSyncEngine(windowSize = 12)
+    val audioEngine = com.lasync.audio.core.audio.ReceiverAudioEngine(scope, clockSyncEngine)
     private val discoveredHostsMap = mutableMapOf<String, DiscoveredHost>()
 
     private val clientId = UUID.randomUUID().toString().take(8).uppercase()
@@ -68,6 +71,21 @@ class ReceiverNetworkEngine(
 
     private val _uiState = MutableStateFlow(ReceiverUiState())
     val uiState: StateFlow<ReceiverUiState> = _uiState.asStateFlow()
+
+    init {
+        scope.launch {
+            launch {
+                audioEngine.isAudioPlaying.collect { isPlaying ->
+                    _uiState.value = _uiState.value.copy(isAudioPlaying = isPlaying)
+                }
+            }
+            launch {
+                audioEngine.framesReceived.collect { frames ->
+                    _uiState.value = _uiState.value.copy(audioFramesReceived = frames)
+                }
+            }
+        }
+    }
 
     fun startDiscovery() {
         if (socket != null && !socket!!.isClosed) return
@@ -158,6 +176,7 @@ class ReceiverNetworkEngine(
                         sessionId = packet.sessionId
                     )
 
+                    audioEngine.startListening()
                     startPinging()
                     startHeartbeat()
                 }
@@ -334,6 +353,7 @@ class ReceiverNetworkEngine(
             sendPacket(leavePacket, hostAddr, NetworkConstants.PORT_CONTROL)
         }
 
+        audioEngine.stopListening()
         pingJob?.cancel()
         heartbeatJob?.cancel()
         clockSyncEngine.reset()
@@ -342,7 +362,8 @@ class ReceiverNetworkEngine(
             rttMs = 0f,
             jitterMs = 0f,
             offsetMs = 0f,
-            isSynchronized = false
+            isSynchronized = false,
+            isAudioPlaying = false
         )
     }
 

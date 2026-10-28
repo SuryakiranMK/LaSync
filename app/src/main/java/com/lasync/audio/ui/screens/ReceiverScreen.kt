@@ -1,5 +1,8 @@
 package com.lasync.audio.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -252,7 +255,59 @@ fun ReceiverScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(22.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Phase 2: Active Acoustic Stream Indicator Banner
+                    AnimatedVisibility(
+                        visible = state.isAudioPlaying,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(QuantumMint.copy(alpha = 0.12f))
+                                .border(1.5.dp, QuantumMint, RoundedCornerShape(16.dp))
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    LaSyncWaveEqualizer(tint = QuantumMint, maxHeight = 20.dp)
+                                    Column {
+                                        Text(
+                                            text = "PLAYING SYNCHRONIZED TONE",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace,
+                                            color = QuantumMint
+                                        )
+                                        Text(
+                                            text = "440 Hz Concert Pitch 'A' (Phase-Locked)",
+                                            fontSize = 10.sp,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = "${state.audioFramesReceived} frames",
+                                    fontSize = 10.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = TextMuted
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     // Real-Time Telemetry Grid
                     Row(

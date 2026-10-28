@@ -1,4 +1,4 @@
-﻿package com.lasync.audio.core.network
+package com.lasync.audio.core.network
 
 import android.os.Build
 import android.os.SystemClock
@@ -25,7 +25,9 @@ data class HostUiState(
     val localIp: String = "",
     val isRunning: Boolean = false,
     val receivers: List<ReceiverNode> = emptyList(),
-    val totalPingsAnswered: Long = 0L
+    val totalPingsAnswered: Long = 0L,
+    val isAudioStreaming: Boolean = false,
+    val audioFramesSent: Long = 0L
 )
 
 class HostNetworkEngine(
@@ -35,14 +37,52 @@ class HostNetworkEngine(
     private var beaconJob: Job? = null
     private var receiveJob: Job? = null
     private var pruneJob: Job? = null
+    private var audioObserverJob: Job? = null
 
     private val receiversMap = ConcurrentHashMap<String, ReceiverNode>()
     private var sessionId = ""
     private var hostDeviceName = Build.MODEL ?: "Host Phone"
     private var pingsCount = 0L
 
+    val audioEngine = com.lasync.audio.core.audio.HostAudioEngine(
+        scope = scope,
+        getSessionId = { sessionId },
+        getTargetIps = { receiversMap.values.map { it.ipAddress } }
+    )
+
     private val _uiState = MutableStateFlow(HostUiState())
     val uiState: StateFlow<HostUiState> = _uiState.asStateFlow()
+
+    init {
+        audioObserverJob = scope.launch {
+            launch {
+                audioEngine.isStreaming.collect { isStreaming ->
+                    _uiState.value = _uiState.value.copy(isAudioStreaming = isStreaming)
+                }
+            }
+            launch {
+                audioEngine.framesSent.collect { frames ->
+                    _uiState.value = _uiState.value.copy(audioFramesSent = frames)
+                }
+            }
+        }
+    }
+
+    fun startToneTest() {
+        audioEngine.startTone()
+    }
+
+    fun stopToneTest() {
+        audioEngine.stopTone()
+    }
+
+    fun toggleToneTest() {
+        if (audioEngine.isStreaming.value) {
+            stopToneTest()
+        } else {
+            startToneTest()
+        }
+    }
 
     fun start(customSessionId: String? = null) {
         if (socket != null && !socket!!.isClosed) return
@@ -242,6 +282,7 @@ class HostNetworkEngine(
     }
 
     fun stop() {
+        audioEngine.stopTone()
         beaconJob?.cancel()
         receiveJob?.cancel()
         pruneJob?.cancel()

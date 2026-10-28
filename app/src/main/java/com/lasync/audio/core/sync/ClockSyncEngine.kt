@@ -1,4 +1,4 @@
-﻿package com.lasync.audio.core.sync
+package com.lasync.audio.core.sync
 
 import android.os.SystemClock
 import kotlin.math.abs
@@ -105,6 +105,13 @@ class ClockSyncEngine(
      */
     fun toMasterTimeNanos(localNanos: Long = SystemClock.elapsedRealtimeNanos()): Long {
         return localNanos + getFilteredOffsetNanos()
+    }
+
+    /**
+     * Convert Host Master Timeline monotonic time into this device's local monotonic time.
+     */
+    fun toLocalTimeNanos(masterNanos: Long): Long {
+        return masterNanos - getFilteredOffsetNanos()
     }
 
     @Synchronized
