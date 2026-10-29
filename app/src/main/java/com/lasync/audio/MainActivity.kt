@@ -32,8 +32,16 @@ import com.lasync.audio.ui.theme.VoidBackground
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.net.Uri
+import com.lasync.audio.core.updater.UpdateChecker
+import com.lasync.audio.core.updater.UpdateInfo
+import com.lasync.audio.ui.components.UpdateDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class ScreenState {
     HOME,
@@ -46,6 +54,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var hostEngine: HostNetworkEngine
     private lateinit var receiverEngine: ReceiverNetworkEngine
 
+    private val availableUpdateState = mutableStateOf<UpdateInfo?>(null)
     private var pendingMediaProjectionCallback: ((MediaProjection?) -> Unit)? = null
 
     private val mediaProjectionLauncher = registerForActivityResult(
@@ -109,6 +118,22 @@ class MainActivity : ComponentActivity() {
         mediaProjectionLauncher.launch(projectionManager.createScreenCaptureIntent())
     }
 
+    private fun checkForAppUpdate() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val currentVersion = try {
+                packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0.4"
+            } catch (_: Exception) {
+                "1.0.4"
+            }
+            val update = UpdateChecker.checkForUpdate(currentVersion)
+            if (update != null) {
+                withContext(Dispatchers.Main) {
+                    availableUpdateState.value = update
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -116,6 +141,7 @@ class MainActivity : ComponentActivity() {
         receiverEngine = ReceiverNetworkEngine(lifecycleScope)
 
         checkPermissions()
+        checkForAppUpdate()
 
         setContent {
             LaSyncTheme {
@@ -124,6 +150,26 @@ class MainActivity : ComponentActivity() {
                     color = VoidBackground
                 ) {
                     var currentScreen by remember { mutableStateOf(ScreenState.HOME) }
+                    val availableUpdate by availableUpdateState
+
+                    // In-App GitHub Auto-Updater Dialog
+                    if (availableUpdate != null) {
+                        UpdateDialog(
+                            updateInfo = availableUpdate!!,
+                            onDownload = {
+                                try {
+                                    val downloadIntent = Intent(Intent.ACTION_VIEW, Uri.parse(availableUpdate!!.downloadUrl))
+                                    startActivity(downloadIntent)
+                                } catch (e: Exception) {
+                                    android.util.Log.e("MainActivity", "Failed to launch update link: ${e.message}")
+                                }
+                                availableUpdateState.value = null
+                            },
+                            onDismiss = {
+                                availableUpdateState.value = null
+                            }
+                        )
+                    }
 
                     AnimatedContent(
                         targetState = currentScreen,
