@@ -52,20 +52,30 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            // Android 14+ requires FGS with mediaProjection type to be started BEFORE getMediaProjection
-            LaSyncForegroundService.start(
-                this,
-                "LaSync Music Share Active",
-                "Streaming system audio across LAN",
-                withMediaProjection = true
-            )
-            val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            val projection = projectionManager.getMediaProjection(result.resultCode, result.data!!)
-            pendingMediaProjectionCallback?.invoke(projection)
+            try {
+                // Pass directly to foreground service to ensure ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                // is active before getMediaProjection() is invoked (mandatory on Android 14 and 15)
+                LaSyncForegroundService.startWithMediaProjection(
+                    context = this,
+                    resultCode = result.resultCode,
+                    resultData = result.data!!
+                ) { projection ->
+                    if (projection != null) {
+                        pendingMediaProjectionCallback?.invoke(projection)
+                    } else {
+                        pendingMediaProjectionCallback?.invoke(null)
+                    }
+                    pendingMediaProjectionCallback = null
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Failed to start MediaProjection via Service: ${e.message}", e)
+                pendingMediaProjectionCallback?.invoke(null)
+                pendingMediaProjectionCallback = null
+            }
         } else {
             pendingMediaProjectionCallback?.invoke(null)
+            pendingMediaProjectionCallback = null
         }
-        pendingMediaProjectionCallback = null
     }
 
     private val audioRecordPermissionLauncher = registerForActivityResult(

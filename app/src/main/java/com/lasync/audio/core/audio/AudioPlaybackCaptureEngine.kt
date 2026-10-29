@@ -34,6 +34,7 @@ class AudioPlaybackCaptureEngine(
 
     private var audioRecord: AudioRecord? = null
     private var captureJob: Job? = null
+    private var currentProjection: MediaProjection? = null
 
     private val _isCapturing = MutableStateFlow(false)
     val isCapturing: StateFlow<Boolean> = _isCapturing.asStateFlow()
@@ -41,6 +42,7 @@ class AudioPlaybackCaptureEngine(
     @SuppressLint("MissingPermission")
     fun startCapture(mediaProjection: MediaProjection) {
         if (_isCapturing.value) return
+        currentProjection = mediaProjection
 
         try {
             val config = AudioPlaybackCaptureConfiguration.Builder(mediaProjection)
@@ -105,5 +107,10 @@ class AudioPlaybackCaptureEngine(
             audioRecord?.release()
         } catch (_: Exception) {}
         audioRecord = null
+
+        try {
+            currentProjection?.stop()
+        } catch (_: Exception) {}
+        currentProjection = null
     }
 }

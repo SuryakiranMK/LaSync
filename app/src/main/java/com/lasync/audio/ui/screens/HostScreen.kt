@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,6 +66,7 @@ fun HostScreen(
     onStopSession: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val state by engine.uiState.collectAsState()
 
     Column(
@@ -293,7 +295,10 @@ fun HostScreen(
                             text = "STOP MUSIC SHARING",
                             icon = Icons.Default.Stop,
                             accentColor = CrimsonPulse,
-                            onClick = { engine.stopSystemAudio() },
+                            onClick = {
+                                engine.stopSystemAudio()
+                                com.lasync.audio.core.service.LaSyncForegroundService.stopMediaProjection(context)
+                            },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
