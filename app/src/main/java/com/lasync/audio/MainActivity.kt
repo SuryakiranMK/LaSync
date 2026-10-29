@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var receiverEngine: ReceiverNetworkEngine
 
     private val availableUpdateState = mutableStateOf<UpdateInfo?>(null)
+    private val currentScreenState = mutableStateOf(ScreenState.HOME)
     private var pendingMediaProjectionCallback: ((MediaProjection?) -> Unit)? = null
 
     private val mediaProjectionLauncher = registerForActivityResult(
@@ -134,14 +135,79 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun observeSessionStateForNotifications() {
+        lifecycleScope.launch {
+            hostEngine.uiState.collect { state ->
+                if (currentScreenState.value == ScreenState.HOST && state.isRunning) {
+                    val title = when (state.activeAudioSource) {
+                        com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE -> "LaSync Master • Sharing Music"
+                        com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE -> "LaSync Master • 440 Hz Tone"
+                        com.lasync.audio.core.audio.HostAudioSource.IDLE -> "LaSync Master Host • ${state.sessionId}"
+                    }
+                    val msg = when (state.activeAudioSource) {
+                        com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE -> "🎵 Streaming System Music to ${state.receivers.size} phone(s) • ${state.audioFramesSent} frames"
+                        com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE -> "🔊 Synchronized 440 Hz tone • ${state.audioFramesSent} frames"
+                        com.lasync.audio.core.audio.HostAudioSource.IDLE -> if (state.receivers.isEmpty()) "🟢 Beaconing on LAN • Waiting for listeners" else "🟢 ${state.receivers.size} listener(s) phase-locked"
+                    }
+                    LaSyncForegroundService.updateNotification(
+                        this@MainActivity,
+                        title,
+                        msg,
+                        isAudioActive = state.isAudioStreaming
+                    )
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            receiverEngine.uiState.collect { receiverState ->
+                if (currentScreenState.value == ScreenState.RECEIVER && receiverState.state != com.lasync.audio.core.network.ReceiverState.IDLE) {
+                    val isConnected = receiverState.state == com.lasync.audio.core.network.ReceiverState.CONNECTED
+                    val title = if (isConnected) "LaSync Receiver • Phase-Locked" else "LaSync Receiver • Discovering"
+                    val msg = if (isConnected) {
+                        if (receiverState.isAudioPlaying) {
+                            "🎵 Playing Master Stream • ${receiverState.audioFramesReceived} frames • RTT ${receiverState.rttMs.toInt()}ms"
+                        } else {
+                            "🟢 Linked to ${receiverState.connectedHostName} • RTT ${receiverState.rttMs.toInt()}ms • Loss ${String.format(java.util.Locale.US, "%.1f", receiverState.packetLossPercent)}%"
+                        }
+                    } else {
+                        "📡 Scanning Wi-Fi subnet for Master Host beacon..."
+                    }
+                    LaSyncForegroundService.updateNotification(
+                        this@MainActivity,
+                        title,
+                        msg,
+                        isAudioActive = receiverState.isAudioPlaying
+                    )
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         hostEngine = HostNetworkEngine(lifecycleScope)
         receiverEngine = ReceiverNetworkEngine(lifecycleScope)
 
+        LaSyncForegroundService.onSessionStopRequested = {
+            lifecycleScope.launch(Dispatchers.Main) {
+                hostEngine.stopAllAudio()
+                hostEngine.stop()
+                receiverEngine.stop()
+                currentScreenState.value = ScreenState.HOME
+            }
+        }
+
+        LaSyncForegroundService.onStopAudioRequested = {
+            lifecycleScope.launch(Dispatchers.Main) {
+                hostEngine.stopAllAudio()
+            }
+        }
+
         checkPermissions()
         checkForAppUpdate()
+        observeSessionStateForNotifications()
 
         setContent {
             LaSyncTheme {
@@ -149,7 +215,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = VoidBackground
                 ) {
-                    var currentScreen by remember { mutableStateOf(ScreenState.HOME) }
+                    var currentScreen by currentScreenState
                     val availableUpdate by availableUpdateState
 
                     // In-App GitHub Auto-Updater Dialog
@@ -245,6 +311,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        LaSyncForegroundService.onSessionStopRequested = null
+        LaSyncForegroundService.onStopAudioRequested = null
         hostEngine.stop()
         receiverEngine.stop()
         LaSyncForegroundService.stop(this)

@@ -33,12 +33,18 @@ class LaSyncForegroundService : Service() {
         const val ACTION_STOP = "ACTION_STOP"
         const val ACTION_START_PROJECTION = "ACTION_START_PROJECTION"
         const val ACTION_STOP_PROJECTION = "ACTION_STOP_PROJECTION"
+        const val ACTION_UPDATE = "ACTION_UPDATE"
+        const val ACTION_STOP_AUDIO = "ACTION_STOP_AUDIO"
 
         const val EXTRA_TITLE = "EXTRA_TITLE"
         const val EXTRA_MESSAGE = "EXTRA_MESSAGE"
         const val EXTRA_MEDIA_PROJECTION = "EXTRA_MEDIA_PROJECTION"
+        const val EXTRA_IS_AUDIO_ACTIVE = "EXTRA_IS_AUDIO_ACTIVE"
         const val EXTRA_RESULT_CODE = "EXTRA_RESULT_CODE"
         const val EXTRA_RESULT_DATA = "EXTRA_RESULT_DATA"
+
+        var onSessionStopRequested: (() -> Unit)? = null
+        var onStopAudioRequested: (() -> Unit)? = null
 
         private var onProjectionReadyCallback: ((MediaProjection?) -> Unit)? = null
         private var activeMediaProjection: MediaProjection? = null
@@ -56,6 +62,23 @@ class LaSyncForegroundService : Service() {
                 putExtra(EXTRA_MEDIA_PROJECTION, withMediaProjection)
             }
             context.startForegroundService(intent)
+        }
+
+        fun updateNotification(
+            context: Context,
+            title: String,
+            message: String,
+            isAudioActive: Boolean = false
+        ) {
+            val intent = Intent(context, LaSyncForegroundService::class.java).apply {
+                action = ACTION_UPDATE
+                putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_MESSAGE, message)
+                putExtra(EXTRA_IS_AUDIO_ACTIVE, isAudioActive)
+            }
+            try {
+                context.startService(intent)
+            } catch (_: Exception) {}
         }
 
         fun startWithMediaProjection(
@@ -183,41 +206,104 @@ class LaSyncForegroundService : Service() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     startForeground(
                         NOTIFICATION_ID,
-                        buildNotification("LaSync Host Active", "Broadcasting master session on LAN"),
+                        buildNotification("LaSync Host Active", "Broadcasting master session on LAN", isAudioActive = false),
                         ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
                     )
                 } else {
                     startForeground(
                         NOTIFICATION_ID,
-                        buildNotification("LaSync Host Active", "Broadcasting master session on LAN")
+                        buildNotification("LaSync Host Active", "Broadcasting master session on LAN", isAudioActive = false)
                     )
                 }
             }
+            ACTION_UPDATE -> {
+                val title = intent.getStringExtra(EXTRA_TITLE) ?: "LaSync Audio"
+                val message = intent.getStringExtra(EXTRA_MESSAGE) ?: "Synchronizing over local Wi-Fi"
+                val isAudioActive = intent.getBooleanExtra(EXTRA_IS_AUDIO_ACTIVE, false)
+                val notification = buildNotification(title, message, isAudioActive)
+                val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                manager.notify(NOTIFICATION_ID, notification)
+            }
+            ACTION_STOP_AUDIO -> {
+                onStopAudioRequested?.invoke()
+            }
             ACTION_STOP -> {
+                onSessionStopRequested?.invoke()
                 releaseLocks()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
-    private fun buildNotification(title: String, message: String): Notification {
-        val pendingIntent = PendingIntent.getActivity(
+    private fun buildNotification(
+        title: String,
+        message: String,
+        isAudioActive: Boolean = false
+    ): Notification {
+        val openAppIntent = PendingIntent.getActivity(
             this,
             0,
-            Intent(this, MainActivity::class.java),
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        return NotificationCompat.Builder(this, LaSyncApp.NOTIFICATION_CHANNEL_ID)
+        val stopSessionIntent = PendingIntent.getService(
+            this,
+            1,
+            Intent(this, LaSyncForegroundService::class.java).apply {
+                action = ACTION_STOP
+            },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val builder = NotificationCompat.Builder(this, LaSyncApp.NOTIFICATION_CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(message)
             .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
-            .setContentIntent(pendingIntent)
+            .setContentIntent(openAppIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(message)
+                    .setSummaryText("LaSync CyberShade")
+            )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+        }
+
+        // Action 1: Stop Session directly from notification shade / lock screen
+        builder.addAction(
+            android.R.drawable.ic_menu_close_clear_cancel,
+            "Stop Session",
+            stopSessionIntent
+        )
+
+        // Action 2: Stop Audio (if music or tone test is streaming)
+        if (isAudioActive) {
+            val stopAudioIntent = PendingIntent.getService(
+                this,
+                2,
+                Intent(this, LaSyncForegroundService::class.java).apply {
+                    action = ACTION_STOP_AUDIO
+                },
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            builder.addAction(
+                android.R.drawable.ic_media_pause,
+                "Stop Audio",
+                stopAudioIntent
+            )
+        }
+
+        return builder.build()
     }
 
     @Suppress("DEPRECATION")
