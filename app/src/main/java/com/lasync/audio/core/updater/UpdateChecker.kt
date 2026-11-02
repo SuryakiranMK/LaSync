@@ -78,6 +78,10 @@ object UpdateChecker {
                 }
             }
 
+            if (apkDownloadUrl == htmlUrl && tagName.isNotBlank()) {
+                apkDownloadUrl = "https://github.com/SuryakiranMK/LaSync/releases/download/$tagName/LaSync.apk"
+            }
+
             val cleanRemote = cleanVersionString(tagName)
             val cleanCurrent = cleanVersionString(currentVersion)
 

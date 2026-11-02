@@ -245,15 +245,6 @@ class MainActivity : ComponentActivity() {
                     if (availableUpdate != null) {
                         UpdateDialog(
                             updateInfo = availableUpdate!!,
-                            onDownload = {
-                                try {
-                                    val downloadIntent = Intent(Intent.ACTION_VIEW, Uri.parse(availableUpdate!!.downloadUrl))
-                                    startActivity(downloadIntent)
-                                } catch (e: Exception) {
-                                    android.util.Log.e("MainActivity", "Failed to launch update link: ${e.message}")
-                                }
-                                availableUpdateState.value = null
-                            },
                             onDismiss = {
                                 availableUpdateState.value = null
                             }
