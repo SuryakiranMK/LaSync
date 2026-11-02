@@ -56,7 +56,7 @@ class AudioPlaybackCaptureEngine(
                 AudioFormat.CHANNEL_IN_MONO,
                 AudioConstants.AUDIO_FORMAT
             )
-            val bufferSize = maxOf(minBufferSize * 4, AudioConstants.BYTES_PER_FRAME_MONO * 20)
+            val bufferSize = maxOf(minBufferSize * 2, AudioConstants.BYTES_PER_FRAME_MONO * 4)
 
             val record = AudioRecord.Builder()
                 .setAudioPlaybackCaptureConfig(config)

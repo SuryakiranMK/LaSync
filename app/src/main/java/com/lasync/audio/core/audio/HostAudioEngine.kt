@@ -54,7 +54,7 @@ class HostAudioEngine(
     private val _framesSent = MutableStateFlow(0L)
     val framesSent: StateFlow<Long> = _framesSent.asStateFlow()
 
-    private val _bufferMode = MutableStateFlow(SyncBufferMode.ULTRA_STABLE_MUSIC)
+    private val _bufferMode = MutableStateFlow(SyncBufferMode.ULTRA_LOW_LATENCY)
     val bufferMode: StateFlow<SyncBufferMode> = _bufferMode.asStateFlow()
 
     private val _isMegaphoneActive = MutableStateFlow(false)
@@ -339,7 +339,10 @@ class HostAudioEngine(
             AudioConstants.CHANNEL_CONFIG_OUT,
             AudioConstants.AUDIO_FORMAT
         )
-        val bufferSize = maxOf(minBufferSize * 4, AudioConstants.BYTES_PER_FRAME_STEREO * 50)
+        val bufferSize = minOf(
+            maxOf(minBufferSize * 2, AudioConstants.BYTES_PER_FRAME_STEREO * 6),
+            AudioConstants.BYTES_PER_FRAME_STEREO * 12
+        )
 
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_MEDIA)

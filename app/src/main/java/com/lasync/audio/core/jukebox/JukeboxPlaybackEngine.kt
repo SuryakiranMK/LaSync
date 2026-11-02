@@ -167,7 +167,10 @@ class JukeboxPlaybackEngine(
                 AudioFormat.CHANNEL_OUT_STEREO,
                 AudioFormat.ENCODING_PCM_16BIT
             )
-            val bufferSize = maxOf(minBufferSize * 4, 1920 * 40)
+            val bufferSize = minOf(
+                maxOf(minBufferSize * 2, 1920 * 6),
+                1920 * 12
+            )
 
             val attributes = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)

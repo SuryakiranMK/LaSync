@@ -29,7 +29,7 @@ data class HostUiState(
     val isAudioStreaming: Boolean = false,
     val audioFramesSent: Long = 0L,
     val activeAudioSource: com.lasync.audio.core.audio.HostAudioSource = com.lasync.audio.core.audio.HostAudioSource.IDLE,
-    val bufferMode: com.lasync.audio.core.audio.SyncBufferMode = com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC,
+    val bufferMode: com.lasync.audio.core.audio.SyncBufferMode = com.lasync.audio.core.audio.SyncBufferMode.ULTRA_LOW_LATENCY,
     val isMegaphoneActive: Boolean = false,
     val loadedJukeboxTrack: com.lasync.audio.core.jukebox.JukeboxTrack? = null,
     val isJukeboxDecoding: Boolean = false,
@@ -202,7 +202,7 @@ class HostNetworkEngine(
 
     fun playJukebox(startOffsetMs: Long = 0L) {
         val now = SystemClock.elapsedRealtimeNanos()
-        val scheduledStartNanos = now + 400_000_000L // 400ms lead time for scheduled phase-locked trigger
+        val scheduledStartNanos = now + 150_000_000L // 150ms lead time for scheduled phase-locked trigger
         audioEngine.playJukebox(scheduledStartNanos, startOffsetMs)
 
         val packet = ControlPacket(

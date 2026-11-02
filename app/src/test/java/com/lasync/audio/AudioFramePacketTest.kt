@@ -90,4 +90,33 @@ class AudioFramePacketTest {
         assertEquals(AudioFramePacket.PACKET_TYPE_MEGAPHONE, decoded.packetType)
         assertArrayEquals(micPcm, decoded.payload)
     }
+
+    @Test
+    fun testUltraLowLatencyBufferModeRoundtrip() {
+        val samplePcm = ByteArray(960) { 0x12 }
+        val packet = AudioFramePacket(
+            sessionId = "HOST99",
+            sequenceNumber = 500L,
+            presentationTimestampNanos = 3_000_000_000L,
+            payload = samplePcm,
+            bufferMode = SyncBufferMode.ULTRA_LOW_LATENCY.id
+        )
+
+        val encoded = packet.encode()
+        val decoded = AudioFramePacket.decode(encoded, encoded.size)
+
+        assertNotNull(decoded)
+        assertEquals(SyncBufferMode.ULTRA_LOW_LATENCY.id, decoded!!.bufferMode)
+        assertEquals(50L, SyncBufferMode.fromId(decoded.bufferMode).leadTimeMs)
+        assertEquals(5, SyncBufferMode.fromId(decoded.bufferMode).bufferFrames)
+    }
+
+    @Test
+    fun testSyncBufferModeLookup() {
+        assertEquals(SyncBufferMode.ULTRA_LOW_LATENCY, SyncBufferMode.fromId(3))
+        assertEquals(SyncBufferMode.LOW_LATENCY_VIDEO, SyncBufferMode.fromId(2))
+        assertEquals(SyncBufferMode.ULTRA_STABLE_MUSIC, SyncBufferMode.fromId(1))
+        // Unknown id falls back to ULTRA_LOW_LATENCY
+        assertEquals(SyncBufferMode.ULTRA_LOW_LATENCY, SyncBufferMode.fromId(99))
+    }
 }

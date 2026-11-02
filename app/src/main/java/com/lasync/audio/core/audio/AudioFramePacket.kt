@@ -21,7 +21,7 @@ data class AudioFramePacket(
     val sequenceNumber: Long,
     val presentationTimestampNanos: Long,
     val payload: ByteArray,
-    val bufferMode: Byte = SyncBufferMode.ULTRA_STABLE_MUSIC.id,
+    val bufferMode: Byte = SyncBufferMode.ULTRA_LOW_LATENCY.id,
     val packetType: Byte = PACKET_TYPE_AUDIO_FRAME
 ) {
     companion object {
@@ -58,7 +58,7 @@ data class AudioFramePacket(
             val bufferMode = if (version >= VERSION_V2 && buffer.hasRemaining()) {
                 buffer.get()
             } else {
-                SyncBufferMode.ULTRA_STABLE_MUSIC.id
+                SyncBufferMode.ULTRA_LOW_LATENCY.id
             }
 
             if (payloadLength < 0 || buffer.remaining() < payloadLength) return null

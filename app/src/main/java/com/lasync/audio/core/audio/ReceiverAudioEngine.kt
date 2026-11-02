@@ -74,7 +74,7 @@ class ReceiverAudioEngine(
     private val _framesReceived = MutableStateFlow(0L)
     val framesReceived: StateFlow<Long> = _framesReceived.asStateFlow()
 
-    private val _activeBufferMode = MutableStateFlow(SyncBufferMode.ULTRA_STABLE_MUSIC)
+    private val _activeBufferMode = MutableStateFlow(SyncBufferMode.ULTRA_LOW_LATENCY)
     val activeBufferMode: StateFlow<SyncBufferMode> = _activeBufferMode.asStateFlow()
 
     private val _hardwareLatencyMs = MutableStateFlow(0f)
@@ -310,7 +310,7 @@ class ReceiverAudioEngine(
                     isPlayingStarted = true
                     _isAudioPlaying.value = true
                 } else {
-                    delay(10)
+                    delay(5)
                     continue
                 }
             }
@@ -329,8 +329,44 @@ class ReceiverAudioEngine(
                 continue
             }
 
-            val queuedFrame = jitterQueue.poll()
+            val queuedFrame = jitterQueue.peek()
             if (queuedFrame != null) {
+                // Megaphone voice PA broadcast bypasses all timestamp scheduling
+                if (queuedFrame.isMegaphone || _isMegaphoneActive.value) {
+                    jitterQueue.poll()
+                    val stereoFrame = AudioConstants.monoToStereo(queuedFrame.payload)
+                    audioTrack?.write(stereoFrame, 0, stereoFrame.size, AudioTrack.WRITE_BLOCKING)
+                    _isAudioPlaying.value = true
+                    continue
+                }
+
+                // Precision Clock-Locked Presentation Scheduling
+                val targetLocalNs = clockSyncEngine.toLocalTimeNanos(queuedFrame.presentationTimestampNanos) + (delayTrimMs * 1_000_000L)
+                val currentDriverLatencyNs = if (_hardwareLatencyMs.value > 0f) {
+                    (_hardwareLatencyMs.value * 1_000_000L).toLong().coerceIn(10_000_000L, 80_000_000L)
+                } else {
+                    25_000_000L // 25ms low-latency default
+                }
+                val targetWriteNs = targetLocalNs - currentDriverLatencyNs
+                val deltaNs = targetWriteNs - now
+                val deltaMs = deltaNs / 1_000_000L
+
+                if (deltaMs > 3) {
+                    // Frame is ahead of schedule: wait for exact scheduled release time
+                    if (deltaMs > 8) {
+                        delay(deltaMs - 4)
+                    } else {
+                        Thread.yield()
+                    }
+                    continue
+                } else if (deltaMs < -40) {
+                    // Frame is stale / late by > 40ms: drop to maintain phase-lock & prevent cumulative delay
+                    jitterQueue.poll()
+                    continue
+                }
+
+                // Frame is on-schedule: poll and write to DAC
+                jitterQueue.poll()
                 lastTargetPresentationTimestampHostNs = queuedFrame.presentationTimestampNanos + (delayTrimMs * 1_000_000L)
                 val stereoFrame = AudioConstants.monoToStereo(queuedFrame.payload)
 
@@ -348,8 +384,8 @@ class ReceiverAudioEngine(
                     updateHardwarePhaseMetrics(totalAudioFramesWritten, lastTargetPresentationTimestampHostNs, audioTimestamp)
                 }
             } else if (isPlayingStarted) {
-                // Wi-Fi jitter dip: write silence frame to prevent hardware DAC pop
-                audioTrack?.write(silenceStereoFrame, 0, silenceStereoFrame.size, AudioTrack.WRITE_BLOCKING)
+                // Jitter queue buffer dip: brief yield to prevent thread spin
+                delay(2)
             }
         }
 
@@ -406,8 +442,12 @@ class ReceiverAudioEngine(
             AudioConstants.CHANNEL_CONFIG_OUT,
             AudioConstants.AUDIO_FORMAT
         )
-        // Ample headroom (150 frames * 1920 bytes = 288 KB, ~1.5 seconds)
-        val bufferSize = maxOf(minBufferSize * 4, AudioConstants.BYTES_PER_FRAME_STEREO * 150)
+        // Dynamic low-latency buffer (between 6 and 12 frames = 60ms to 120ms)
+        // Eliminates the massive 1,500ms AudioTrack buffer bloat
+        val bufferSize = minOf(
+            maxOf(minBufferSize * 2, AudioConstants.BYTES_PER_FRAME_STEREO * 6),
+            AudioConstants.BYTES_PER_FRAME_STEREO * 12
+        )
 
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_MEDIA)

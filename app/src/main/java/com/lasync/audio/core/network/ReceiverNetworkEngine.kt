@@ -47,7 +47,7 @@ data class ReceiverUiState(
     val isSynchronized: Boolean = false,
     val isAudioPlaying: Boolean = false,
     val audioFramesReceived: Long = 0L,
-    val bufferMode: com.lasync.audio.core.audio.SyncBufferMode = com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC,
+    val bufferMode: com.lasync.audio.core.audio.SyncBufferMode = com.lasync.audio.core.audio.SyncBufferMode.ULTRA_LOW_LATENCY,
     val hardwareLatencyMs: Float = 0f,
     val phaseErrorMs: Float = 0f,
     val isPhaseLocked: Boolean = false,

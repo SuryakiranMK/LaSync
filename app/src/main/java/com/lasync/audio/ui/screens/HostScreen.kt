@@ -292,10 +292,14 @@ fun HostScreen(
                     )
 
                     Text(
-                        text = "${state.bufferMode.leadTimeMs}ms Lead",
+                        text = "${state.bufferMode.leadTimeMs}ms Lead • ${state.bufferMode.title}",
                         fontSize = 10.sp,
                         fontFamily = FontFamily.Monospace,
-                        color = if (state.bufferMode == com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC) QuantumMint else HyperCyan,
+                        color = when (state.bufferMode) {
+                            com.lasync.audio.core.audio.SyncBufferMode.ULTRA_LOW_LATENCY -> QuantumMint
+                            com.lasync.audio.core.audio.SyncBufferMode.LOW_LATENCY_VIDEO -> HyperCyan
+                            com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC -> SolarAmber
+                        },
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -304,36 +308,37 @@ fun HostScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    val isMusic = state.bufferMode == com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC
+                    val isParty = state.bufferMode == com.lasync.audio.core.audio.SyncBufferMode.ULTRA_LOW_LATENCY
                     val isVideo = state.bufferMode == com.lasync.audio.core.audio.SyncBufferMode.LOW_LATENCY_VIDEO
+                    val isStable = state.bufferMode == com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC
 
-                    // Ultra-Stable Music Button
+                    // Ultra-Low Party Button
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (isMusic) QuantumMint.copy(alpha = 0.15f) else CarbonCardHighlight)
+                            .background(if (isParty) QuantumMint.copy(alpha = 0.15f) else CarbonCardHighlight)
                             .border(
                                 1.dp,
-                                if (isMusic) QuantumMint else BorderNeon,
+                                if (isParty) QuantumMint else BorderNeon,
                                 RoundedCornerShape(10.dp)
                             )
-                            .clickable { engine.setBufferMode(com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC) }
-                            .padding(vertical = 10.dp, horizontal = 8.dp),
+                            .clickable { engine.setBufferMode(com.lasync.audio.core.audio.SyncBufferMode.ULTRA_LOW_LATENCY) }
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "🎵 Music Mode",
-                                fontSize = 12.sp,
+                                text = "⚡ Party Sync",
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isMusic) QuantumMint else TextSecondary
+                                color = if (isParty) QuantumMint else TextSecondary
                             )
                             Text(
-                                text = "1.0s RAM Cushion",
-                                fontSize = 9.sp,
+                                text = "50ms Zero-Echo",
+                                fontSize = 8.5.sp,
                                 fontFamily = FontFamily.Monospace,
                                 color = TextMuted
                             )
@@ -352,19 +357,50 @@ fun HostScreen(
                                 RoundedCornerShape(10.dp)
                             )
                             .clickable { engine.setBufferMode(com.lasync.audio.core.audio.SyncBufferMode.LOW_LATENCY_VIDEO) }
-                            .padding(vertical = 10.dp, horizontal = 8.dp),
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "🎬 Video Mode",
-                                fontSize = 12.sp,
+                                text = "🎬 Video Lip",
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isVideo) HyperCyan else TextSecondary
                             )
                             Text(
-                                text = "150ms Lip-Sync",
-                                fontSize = 9.sp,
+                                text = "100ms Sync",
+                                fontSize = 8.5.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = TextMuted
+                            )
+                        }
+                    }
+
+                    // Ultra-Stable Music Button
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isStable) SolarAmber.copy(alpha = 0.15f) else CarbonCardHighlight)
+                            .border(
+                                1.dp,
+                                if (isStable) SolarAmber else BorderNeon,
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable { engine.setBufferMode(com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC) }
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "🛡️ Wi-Fi Guard",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isStable) SolarAmber else TextSecondary
+                            )
+                            Text(
+                                text = "300ms Cushion",
+                                fontSize = 8.5.sp,
                                 fontFamily = FontFamily.Monospace,
                                 color = TextMuted
                             )
@@ -471,7 +507,7 @@ fun HostScreen(
                                         color = QuantumMint
                                     )
                                     Text(
-                                        text = "Spotify, YouTube, Games (All audio except calls)",
+                                        text = "Spotify, YouTube, Games • ${state.bufferMode.leadTimeMs}ms Low-Lag Sync",
                                         fontSize = 9.sp,
                                         color = TextMuted
                                     )
