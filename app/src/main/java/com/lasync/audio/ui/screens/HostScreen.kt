@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,7 @@ import com.lasync.audio.ui.components.LaSyncWaveEqualizer
 import com.lasync.audio.ui.components.ReceiverItemCard
 import com.lasync.audio.ui.theme.BorderNeon
 import com.lasync.audio.ui.theme.CarbonCard
+import com.lasync.audio.ui.theme.CarbonCardHighlight
 import com.lasync.audio.ui.theme.CrimsonPulse
 import com.lasync.audio.ui.theme.HyperCyan
 import com.lasync.audio.ui.theme.QuantumMint
@@ -228,6 +230,115 @@ fun HostScreen(
         }
 
         Spacer(modifier = Modifier.height(14.dp))
+
+        // TruePhase Buffer Profile Selector (Ultra-Stable Music vs Low-Latency Video)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(CarbonCard)
+                .border(1.dp, BorderNeon, RoundedCornerShape(16.dp))
+                .padding(12.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "TRUEPHASE BUFFER PROFILE",
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = TextMuted,
+                        letterSpacing = 0.5.sp
+                    )
+
+                    Text(
+                        text = "${state.bufferMode.leadTimeMs}ms Lead",
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = if (state.bufferMode == com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC) QuantumMint else HyperCyan,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val isMusic = state.bufferMode == com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC
+                    val isVideo = state.bufferMode == com.lasync.audio.core.audio.SyncBufferMode.LOW_LATENCY_VIDEO
+
+                    // Ultra-Stable Music Button
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isMusic) QuantumMint.copy(alpha = 0.15f) else CarbonCardHighlight)
+                            .border(
+                                1.dp,
+                                if (isMusic) QuantumMint else BorderNeon,
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable { engine.setBufferMode(com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC) }
+                            .padding(vertical = 10.dp, horizontal = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "🎵 Music Mode",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isMusic) QuantumMint else TextSecondary
+                            )
+                            Text(
+                                text = "1.0s RAM Cushion",
+                                fontSize = 9.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = TextMuted
+                            )
+                        }
+                    }
+
+                    // Low-Latency Video Button
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isVideo) HyperCyan.copy(alpha = 0.15f) else CarbonCardHighlight)
+                            .border(
+                                1.dp,
+                                if (isVideo) HyperCyan else BorderNeon,
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable { engine.setBufferMode(com.lasync.audio.core.audio.SyncBufferMode.LOW_LATENCY_VIDEO) }
+                            .padding(vertical = 10.dp, horizontal = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "🎬 Video Mode",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isVideo) HyperCyan else TextSecondary
+                            )
+                            Text(
+                                text = "150ms Lip-Sync",
+                                fontSize = 9.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = TextMuted
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Multi-Source Audio Controller (System Music Capture + 440 Hz Benchmark)
         Box(

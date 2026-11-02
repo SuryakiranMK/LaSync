@@ -46,7 +46,12 @@ data class ReceiverUiState(
     val pingsCount: Long = 0L,
     val isSynchronized: Boolean = false,
     val isAudioPlaying: Boolean = false,
-    val audioFramesReceived: Long = 0L
+    val audioFramesReceived: Long = 0L,
+    val bufferMode: com.lasync.audio.core.audio.SyncBufferMode = com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC,
+    val hardwareLatencyMs: Float = 0f,
+    val phaseErrorMs: Float = 0f,
+    val isPhaseLocked: Boolean = false,
+    val isHardwareTimestampSupported: Boolean = false
 )
 
 class ReceiverNetworkEngine(
@@ -82,6 +87,31 @@ class ReceiverNetworkEngine(
             launch {
                 audioEngine.framesReceived.collect { frames ->
                     _uiState.value = _uiState.value.copy(audioFramesReceived = frames)
+                }
+            }
+            launch {
+                audioEngine.activeBufferMode.collect { mode ->
+                    _uiState.value = _uiState.value.copy(bufferMode = mode)
+                }
+            }
+            launch {
+                audioEngine.hardwareLatencyMs.collect { lat ->
+                    _uiState.value = _uiState.value.copy(hardwareLatencyMs = lat)
+                }
+            }
+            launch {
+                audioEngine.phaseErrorMs.collect { err ->
+                    _uiState.value = _uiState.value.copy(phaseErrorMs = err)
+                }
+            }
+            launch {
+                audioEngine.isPhaseLocked.collect { locked ->
+                    _uiState.value = _uiState.value.copy(isPhaseLocked = locked)
+                }
+            }
+            launch {
+                audioEngine.isHardwareTimestampSupported.collect { supported ->
+                    _uiState.value = _uiState.value.copy(isHardwareTimestampSupported = supported)
                 }
             }
         }

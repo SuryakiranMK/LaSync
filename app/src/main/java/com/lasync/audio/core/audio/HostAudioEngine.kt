@@ -52,6 +52,9 @@ class HostAudioEngine(
     private val _framesSent = MutableStateFlow(0L)
     val framesSent: StateFlow<Long> = _framesSent.asStateFlow()
 
+    private val _bufferMode = MutableStateFlow(SyncBufferMode.ULTRA_STABLE_MUSIC)
+    val bufferMode: StateFlow<SyncBufferMode> = _bufferMode.asStateFlow()
+
     private var audioJob: Job? = null
     private var udpSocket: DatagramSocket? = null
     private var localAudioTrack: AudioTrack? = null
@@ -59,6 +62,10 @@ class HostAudioEngine(
 
     private var playbackCaptureEngine: AudioPlaybackCaptureEngine? = null
     private var captureSequenceNumber = 0L
+
+    fun setBufferMode(mode: SyncBufferMode) {
+        _bufferMode.value = mode
+    }
 
     fun startTone() {
         if (_isStreaming.value) return
@@ -98,12 +105,14 @@ class HostAudioEngine(
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             playbackCaptureEngine = AudioPlaybackCaptureEngine(scope) { pcmFrame ->
-                val timestamp = SystemClock.elapsedRealtimeNanos() + AudioConstants.PRESENTATION_LEAD_TIME_NS
+                val mode = _bufferMode.value
+                val timestamp = SystemClock.elapsedRealtimeNanos() + mode.leadTimeNs
                 val packet = AudioFramePacket(
                     sessionId = getSessionId(),
                     sequenceNumber = captureSequenceNumber++,
                     presentationTimestampNanos = timestamp,
-                    payload = pcmFrame
+                    payload = pcmFrame,
+                    bufferMode = mode.id
                 )
                 sendAudioPacket(packet)
                 _framesSent.value = captureSequenceNumber
@@ -150,7 +159,8 @@ class HostAudioEngine(
                 val now = SystemClock.elapsedRealtimeNanos()
 
                 if (now >= nextFrameTime) {
-                    val presentationTimestamp = nextFrameTime + AudioConstants.PRESENTATION_LEAD_TIME_NS
+                    val mode = _bufferMode.value
+                    val presentationTimestamp = nextFrameTime + mode.leadTimeNs
                     val pcmData = toneGenerator.generateFrame(AudioConstants.SAMPLES_PER_FRAME)
 
                     // 1. Send to all receivers via UDP
@@ -158,7 +168,8 @@ class HostAudioEngine(
                         sessionId = getSessionId(),
                         sequenceNumber = sequenceNumber++,
                         presentationTimestampNanos = presentationTimestamp,
-                        payload = pcmData
+                        payload = pcmData,
+                        bufferMode = mode.id
                     )
                     sendAudioPacket(packet)
 
@@ -211,8 +222,9 @@ class HostAudioEngine(
             .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
             .build()
 
-        // Pre-fill with matching lead-time silence (200ms) so Host and Receiver stay locked
-        val leadSilenceBytes = ByteArray((AudioConstants.JITTER_BUFFER_FRAMES * AudioConstants.BYTES_PER_FRAME_STEREO))
+        // Pre-fill with matching lead-time silence so Host and Receiver stay locked
+        val leadFrames = _bufferMode.value.bufferFrames
+        val leadSilenceBytes = ByteArray(leadFrames * AudioConstants.BYTES_PER_FRAME_STEREO)
         localAudioTrack?.write(leadSilenceBytes, 0, leadSilenceBytes.size)
 
         localAudioTrack?.play()

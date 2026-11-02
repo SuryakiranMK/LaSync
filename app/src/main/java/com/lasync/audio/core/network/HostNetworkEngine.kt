@@ -28,7 +28,8 @@ data class HostUiState(
     val totalPingsAnswered: Long = 0L,
     val isAudioStreaming: Boolean = false,
     val audioFramesSent: Long = 0L,
-    val activeAudioSource: com.lasync.audio.core.audio.HostAudioSource = com.lasync.audio.core.audio.HostAudioSource.IDLE
+    val activeAudioSource: com.lasync.audio.core.audio.HostAudioSource = com.lasync.audio.core.audio.HostAudioSource.IDLE,
+    val bufferMode: com.lasync.audio.core.audio.SyncBufferMode = com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC
 )
 
 class HostNetworkEngine(
@@ -71,7 +72,16 @@ class HostNetworkEngine(
                     _uiState.value = _uiState.value.copy(activeAudioSource = source)
                 }
             }
+            launch {
+                audioEngine.bufferMode.collect { mode ->
+                    _uiState.value = _uiState.value.copy(bufferMode = mode)
+                }
+            }
         }
+    }
+
+    fun setBufferMode(mode: com.lasync.audio.core.audio.SyncBufferMode) {
+        audioEngine.setBufferMode(mode)
     }
 
     fun startToneTest() {

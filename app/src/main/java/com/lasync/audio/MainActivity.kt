@@ -145,8 +145,8 @@ class MainActivity : ComponentActivity() {
                         com.lasync.audio.core.audio.HostAudioSource.IDLE -> "LaSync Master Host • ${state.sessionId}"
                     }
                     val msg = when (state.activeAudioSource) {
-                        com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE -> "🎵 Streaming System Music to ${state.receivers.size} phone(s) • ${state.audioFramesSent} frames"
-                        com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE -> "🔊 Synchronized 440 Hz tone • ${state.audioFramesSent} frames"
+                        com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE -> "🎵 Streaming System Music [${state.bufferMode.title}] to ${state.receivers.size} phone(s) • ${state.audioFramesSent} frames"
+                        com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE -> "🔊 Synchronized 440 Hz tone [${state.bufferMode.title}] • ${state.audioFramesSent} frames"
                         com.lasync.audio.core.audio.HostAudioSource.IDLE -> if (state.receivers.isEmpty()) "🟢 Beaconing on LAN • Waiting for listeners" else "🟢 ${state.receivers.size} listener(s) phase-locked"
                     }
                     LaSyncForegroundService.updateNotification(

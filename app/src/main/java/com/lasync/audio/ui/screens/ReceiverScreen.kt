@@ -309,6 +309,114 @@ fun ReceiverScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
+                    // TruePhase Hardware Presentation & Buffer Mode Card
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(CarbonCard)
+                            .border(
+                                1.dp,
+                                if (state.isPhaseLocked) QuantumMint.copy(alpha = 0.5f) else BorderNeon,
+                                RoundedCornerShape(16.dp)
+                            )
+                            .padding(14.dp)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(if (state.isPhaseLocked) QuantumMint else SolarAmber)
+                                    )
+                                    Text(
+                                        text = "TRUEPHASE HARDWARE SYNC",
+                                        fontSize = 10.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextMuted,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
+
+                                Text(
+                                    text = if (state.isPhaseLocked) "PHASE-LOCKED" else "CALIBRATING",
+                                    fontSize = 10.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (state.isPhaseLocked) QuantumMint else SolarAmber
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Profile Mode",
+                                        fontSize = 10.sp,
+                                        color = TextSecondary
+                                    )
+                                    Text(
+                                        text = state.bufferMode.title,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    )
+                                }
+
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "DAC Latency",
+                                        fontSize = 10.sp,
+                                        color = TextSecondary
+                                    )
+                                    Text(
+                                        text = if (state.hardwareLatencyMs > 0) "${String.format(Locale.US, "%.1f", state.hardwareLatencyMs)} ms" else "Active",
+                                        fontSize = 12.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        color = HyperCyan
+                                    )
+                                }
+
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "Phase Alignment",
+                                        fontSize = 10.sp,
+                                        color = TextSecondary
+                                    )
+                                    Text(
+                                        text = if (state.isAudioPlaying && state.isHardwareTimestampSupported) {
+                                            val sign = if (state.phaseErrorMs >= 0) "+" else ""
+                                            "$sign${String.format(Locale.US, "%.1f", state.phaseErrorMs)} ms"
+                                        } else {
+                                            "±0.0 ms"
+                                        },
+                                        fontSize = 12.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (state.isPhaseLocked) QuantumMint else Ultraviolet
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
                     // Real-Time Telemetry Grid
                     Row(
                         modifier = Modifier.fillMaxWidth(),

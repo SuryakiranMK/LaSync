@@ -19,9 +19,10 @@ object AudioConstants {
     const val BYTES_PER_FRAME_MONO = SAMPLES_PER_FRAME * CHANNEL_COUNT_MONO * BYTES_PER_SAMPLE // 960 bytes
     const val BYTES_PER_FRAME_STEREO = SAMPLES_PER_FRAME * CHANNEL_COUNT_STEREO * BYTES_PER_SAMPLE // 1920 bytes
 
-    // Target jitter buffer lead time: 200 ms (absorbs up to 200ms Wi-Fi variance without lag)
-    const val JITTER_BUFFER_MS = 200L
-    const val JITTER_BUFFER_FRAMES = (JITTER_BUFFER_MS / FRAME_DURATION_MS).toInt() // 20 frames
+    // Default buffer mode (can be dynamically switched at runtime by Host)
+    val DEFAULT_BUFFER_MODE = SyncBufferMode.ULTRA_STABLE_MUSIC
+    const val JITTER_BUFFER_MS = 1000L
+    const val JITTER_BUFFER_FRAMES = (JITTER_BUFFER_MS / FRAME_DURATION_MS).toInt() // 100 frames
     const val PRESENTATION_LEAD_TIME_MS = JITTER_BUFFER_MS
     const val PRESENTATION_LEAD_TIME_NS = PRESENTATION_LEAD_TIME_MS * 1_000_000L
 

@@ -20,23 +20,27 @@ data class AudioFramePacket(
     val sessionId: String,
     val sequenceNumber: Long,
     val presentationTimestampNanos: Long,
-    val payload: ByteArray
+    val payload: ByteArray,
+    val bufferMode: Byte = SyncBufferMode.ULTRA_STABLE_MUSIC.id
 ) {
     companion object {
         const val MAGIC: Short = 0x4C53
-        const val VERSION: Byte = 1
+        const val VERSION_V1: Byte = 1
+        const val VERSION_V2: Byte = 2
         const val PACKET_TYPE_AUDIO_FRAME: Byte = 0x05
-        const val HEADER_SIZE = 30
+        const val HEADER_SIZE_V1 = 30
+        const val HEADER_SIZE_V2 = 31
+        const val HEADER_SIZE = HEADER_SIZE_V2
 
         fun decode(bytes: ByteArray, length: Int): AudioFramePacket? {
-            if (length < HEADER_SIZE) return null
+            if (length < HEADER_SIZE_V1) return null
 
             val buffer = ByteBuffer.wrap(bytes, 0, length).order(ByteOrder.BIG_ENDIAN)
             val magic = buffer.short
             if (magic != MAGIC) return null
 
             val version = buffer.get()
-            if (version != VERSION) return null
+            if (version != VERSION_V1 && version != VERSION_V2) return null
 
             val type = buffer.get()
             if (type != PACKET_TYPE_AUDIO_FRAME) return null
@@ -49,6 +53,12 @@ data class AudioFramePacket(
             val presentationTimestampNanos = buffer.long
             val payloadLength = buffer.int
 
+            val bufferMode = if (version >= VERSION_V2 && buffer.hasRemaining()) {
+                buffer.get()
+            } else {
+                SyncBufferMode.ULTRA_STABLE_MUSIC.id
+            }
+
             if (payloadLength < 0 || buffer.remaining() < payloadLength) return null
 
             val payload = ByteArray(payloadLength)
@@ -58,17 +68,18 @@ data class AudioFramePacket(
                 sessionId = sessionId,
                 sequenceNumber = sequenceNumber,
                 presentationTimestampNanos = presentationTimestampNanos,
-                payload = payload
+                payload = payload,
+                bufferMode = bufferMode
             )
         }
     }
 
     fun encode(): ByteArray {
-        val totalSize = HEADER_SIZE + payload.size
+        val totalSize = HEADER_SIZE_V2 + payload.size
         val buffer = ByteBuffer.allocate(totalSize).order(ByteOrder.BIG_ENDIAN)
 
         buffer.putShort(MAGIC)
-        buffer.put(VERSION)
+        buffer.put(VERSION_V2)
         buffer.put(PACKET_TYPE_AUDIO_FRAME)
 
         val sessionBytes = ByteArray(6) { 0x20 } // default space
@@ -79,6 +90,7 @@ data class AudioFramePacket(
         buffer.putLong(sequenceNumber)
         buffer.putLong(presentationTimestampNanos)
         buffer.putInt(payload.size)
+        buffer.put(bufferMode)
         buffer.put(payload)
 
         return buffer.array()
@@ -91,6 +103,7 @@ data class AudioFramePacket(
         return sequenceNumber == other.sequenceNumber &&
                presentationTimestampNanos == other.presentationTimestampNanos &&
                sessionId == other.sessionId &&
+               bufferMode == other.bufferMode &&
                payload.contentEquals(other.payload)
     }
 
@@ -98,6 +111,7 @@ data class AudioFramePacket(
         var result = sessionId.hashCode()
         result = 31 * result + sequenceNumber.hashCode()
         result = 31 * result + presentationTimestampNanos.hashCode()
+        result = 31 * result + bufferMode.hashCode()
         result = 31 * result + payload.contentHashCode()
         return result
     }
