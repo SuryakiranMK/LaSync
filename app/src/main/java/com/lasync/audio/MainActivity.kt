@@ -1,10 +1,17 @@
 package com.lasync.audio
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -23,22 +30,16 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.lasync.audio.core.network.HostNetworkEngine
 import com.lasync.audio.core.network.ReceiverNetworkEngine
+import com.lasync.audio.core.network.ReceiverState
 import com.lasync.audio.core.service.LaSyncForegroundService
+import com.lasync.audio.core.updater.UpdateChecker
+import com.lasync.audio.core.updater.UpdateInfo
+import com.lasync.audio.ui.components.UpdateDialog
 import com.lasync.audio.ui.screens.HomeScreen
 import com.lasync.audio.ui.screens.HostScreen
 import com.lasync.audio.ui.screens.ReceiverScreen
 import com.lasync.audio.ui.theme.LaSyncTheme
 import com.lasync.audio.ui.theme.VoidBackground
-
-import android.app.Activity
-import android.content.Context
-import android.content.Intent
-import android.media.projection.MediaProjection
-import android.media.projection.MediaProjectionManager
-import android.net.Uri
-import com.lasync.audio.core.updater.UpdateChecker
-import com.lasync.audio.core.updater.UpdateInfo
-import com.lasync.audio.ui.components.UpdateDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -203,8 +204,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        hostEngine = HostNetworkEngine(lifecycleScope)
-        receiverEngine = ReceiverNetworkEngine(lifecycleScope, applicationContext)
+        hostEngine = (application as LaSyncApp).hostEngine
+        receiverEngine = (application as LaSyncApp).receiverEngine
+        syncScreenWithEngineState()
 
         LaSyncForegroundService.onSessionStopRequested = {
             lifecycleScope.launch(Dispatchers.Main) {
@@ -233,6 +235,11 @@ class MainActivity : ComponentActivity() {
                 ) {
                     var currentScreen by currentScreenState
                     val availableUpdate by availableUpdateState
+
+                    // Prevent resetting to landing screen: back button minimizes app while keeping connection alive
+                    BackHandler(enabled = currentScreen != ScreenState.HOME) {
+                        moveTaskToBack(true)
+                    }
 
                     // In-App GitHub Auto-Updater Dialog
                     if (availableUpdate != null) {
@@ -333,12 +340,47 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        syncScreenWithEngineState()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        syncScreenWithEngineState()
+    }
+
+    private fun syncScreenWithEngineState() {
+        if (!::hostEngine.isInitialized || !::receiverEngine.isInitialized) return
+        when {
+            hostEngine.uiState.value.isRunning -> {
+                if (currentScreenState.value != ScreenState.HOST) {
+                    currentScreenState.value = ScreenState.HOST
+                }
+            }
+            receiverEngine.uiState.value.state != ReceiverState.IDLE -> {
+                if (currentScreenState.value != ScreenState.RECEIVER) {
+                    currentScreenState.value = ScreenState.RECEIVER
+                }
+            }
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (currentScreenState.value != ScreenState.HOME) {
+            moveTaskToBack(true)
+        } else {
+            super.onBackPressed()
+        }
+    }
+
     override fun onDestroy() {
         LaSyncForegroundService.onSessionStopRequested = null
         LaSyncForegroundService.onStopAudioRequested = null
-        hostEngine.stop()
-        receiverEngine.stop()
-        LaSyncForegroundService.stop(this)
+        // Do not stop engines or foreground service here.
+        // Active sessions persist in the background until the user explicitly stops them.
         super.onDestroy()
     }
 }

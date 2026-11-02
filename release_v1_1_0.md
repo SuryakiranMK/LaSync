@@ -33,3 +33,4 @@ Welcome to **LaSync v1.1.0** — introducing **RAMJukebox**, our zero-traffic of
 
 ### 📦 Installation
 Download and install `LaSync.apk` directly on all Android devices (Android 8.0+ / API 26+).
+
