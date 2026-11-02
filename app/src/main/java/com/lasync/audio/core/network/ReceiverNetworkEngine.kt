@@ -301,8 +301,13 @@ class ReceiverNetworkEngine(
             }
 
             NetworkConstants.TYPE_REMOTE_DISCONNECT -> {
+                audioEngine.stopAudioStream()
                 stop()
                 _uiState.value = ReceiverUiState(state = ReceiverState.IDLE)
+            }
+
+            NetworkConstants.TYPE_AUDIO_STOP -> {
+                audioEngine.stopAudioStream()
             }
 
             NetworkConstants.TYPE_JUKEBOX_PRELOAD_START -> {

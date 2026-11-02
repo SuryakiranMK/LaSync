@@ -173,4 +173,20 @@ class ControlPacketTest {
         assertEquals(NetworkConstants.TYPE_JUKEBOX_READY, decodedReady!!.type)
         assertEquals("RCV_01", decodedReady.senderId)
     }
+
+    @Test
+    fun testAudioStopPacketRoundtrip() {
+        val stopPacket = ControlPacket(
+            type = NetworkConstants.TYPE_AUDIO_STOP,
+            sessionId = "HOST01",
+            sequenceNumber = 20L,
+            senderId = "HOST"
+        )
+        val stopBytes = stopPacket.toByteArray()
+        val decodedStop = ControlPacket.fromByteArray(stopBytes, stopBytes.size)
+
+        assertNotNull(decodedStop)
+        assertEquals(NetworkConstants.TYPE_AUDIO_STOP, decodedStop!!.type)
+        assertEquals("HOST01", decodedStop.sessionId)
+    }
 }

@@ -209,7 +209,6 @@ class HostAudioEngine(
     }
 
     fun stopSystemAudio() {
-        if (_activeSource.value != HostAudioSource.SYSTEM_CAPTURE && previousSourceBeforeMegaphone != HostAudioSource.SYSTEM_CAPTURE) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             playbackCaptureEngine?.stopCapture()
             playbackCaptureEngine = null
@@ -389,7 +388,12 @@ class HostAudioEngine(
     }
 
     private fun cleanupResources() {
+        audioJob?.cancel()
+        audioJob = null
+
         try {
+            localAudioTrack?.pause()
+            localAudioTrack?.flush()
             localAudioTrack?.stop()
             localAudioTrack?.release()
         } catch (_: Exception) {}

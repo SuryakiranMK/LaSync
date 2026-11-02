@@ -171,6 +171,7 @@ class HostNetworkEngine(
 
     fun stopToneTest() {
         audioEngine.stopTone()
+        broadcastControlPacket(NetworkConstants.TYPE_AUDIO_STOP)
     }
 
     fun startSystemAudio(mediaProjection: android.media.projection.MediaProjection) {
@@ -179,10 +180,12 @@ class HostNetworkEngine(
 
     fun stopSystemAudio() {
         audioEngine.stopSystemAudio()
+        broadcastControlPacket(NetworkConstants.TYPE_AUDIO_STOP)
     }
 
     fun stopAllAudio() {
         audioEngine.stopAll()
+        broadcastControlPacket(NetworkConstants.TYPE_AUDIO_STOP)
     }
 
     private val readyReceiversSet = ConcurrentHashMap.newKeySet<String>()
@@ -533,6 +536,8 @@ class HostNetworkEngine(
     }
 
     fun stop() {
+        broadcastControlPacket(NetworkConstants.TYPE_AUDIO_STOP)
+        broadcastControlPacket(NetworkConstants.TYPE_REMOTE_DISCONNECT)
         audioEngine.stopAll()
         beaconJob?.cancel()
         receiveJob?.cancel()

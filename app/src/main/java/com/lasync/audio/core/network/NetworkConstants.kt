@@ -19,6 +19,7 @@ object NetworkConstants {
     const val TYPE_MEGAPHONE_STOP: Byte = 0x11
     const val TYPE_REMOTE_CONFIG: Byte = 0x12
     const val TYPE_REMOTE_DISCONNECT: Byte = 0x13
+    const val TYPE_AUDIO_STOP: Byte = 0x14
     const val TYPE_JUKEBOX_PRELOAD_START: Byte = 0x20
     const val TYPE_JUKEBOX_READY: Byte = 0x21
     const val TYPE_JUKEBOX_PLAY: Byte = 0x22

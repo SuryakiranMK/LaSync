@@ -26,3 +26,4 @@
 
 ### 📦 Installation
 Download and install `LaSync.apk` directly on your Android device (Android 8.0+ / API 26+).
+

@@ -65,7 +65,7 @@ class ReceiverAudioEngine(
 ) {
     companion object {
         private const val TAG = "ReceiverAudioEngine"
-        private const val STREAM_TIMEOUT_MS = 1200L
+        private const val STREAM_TIMEOUT_MS = 300L
     }
 
     private val _isAudioPlaying = MutableStateFlow(false)
@@ -153,6 +153,16 @@ class ReceiverAudioEngine(
 
     fun stopJukebox() {
         jukeboxPlaybackEngine.stopPlayback()
+    }
+
+    fun stopAudioStream() {
+        jitterQueue.clear()
+        try {
+            audioTrack?.pause()
+            audioTrack?.flush()
+        } catch (_: Exception) {}
+        _isAudioPlaying.value = false
+        _isPhaseLocked.value = false
     }
 
     @Volatile
