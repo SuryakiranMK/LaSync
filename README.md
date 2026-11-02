@@ -10,11 +10,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SuryakiranMK/LaSync/releases/download/v1.0.7/LaSync.apk">
-    <img src="https://img.shields.io/badge/Download%20APK-v1.0.7-00F2FE?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
+  <a href="https://github.com/SuryakiranMK/LaSync/releases/download/v1.0.8/LaSync.apk">
+    <img src="https://img.shields.io/badge/Download%20APK-v1.0.8-00F2FE?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
   </a>
   <a href="https://github.com/SuryakiranMK/LaSync/releases/latest">
-    <img src="https://img.shields.io/badge/Release-v1.0.7-9D4EDD?style=for-the-badge" alt="Release Version" />
+    <img src="https://img.shields.io/badge/Release-v1.0.8-9D4EDD?style=for-the-badge" alt="Release Version" />
   </a>
 </p>
 
@@ -84,6 +84,11 @@ LaSync features a proprietary **"Cyber-Acoustic Precision"** design language:
 - **Remote 100% Volume Boost**: Receivers automatically override `STREAM_MUSIC` to maximum volume and play voice with zero jitter delay (<20ms).
 - **Clean Volume Restoration**: Restores each receiver's volume back to their original level once the broadcast ends.
 
+### Phase 4: SoundBoard (Host Multi-Device Mixer Console)
+- **Per-Device Delay Trim (`+/- ms`)**: Tune out room echoes and Bluetooth headphone codec delays per phone (-250ms to +350ms) with microsecond precision.
+- **Hardware Route Detection**: Automatically detects and displays whether each receiver outputs to 🎧 Bluetooth, 🔊 Built-in Speaker, or 🔌 USB DAC.
+- **Remote Mixer Strip Controls**: Per-phone remote volume steppers (`-10%`, `+10%`), channel MUTE, studio SOLO isolation, and remote DROP/disconnect.
+
 ---
 
 ## 🛠 Building & Running
@@ -119,3 +124,4 @@ adb install -r LaSync.apk
 4. **To Share Music**: On the Host, tap **[ SHARE SYSTEM MUSIC ]**, approve the permission prompt, open Spotify or YouTube, and play any song!
 5. **To Test Tone Sync**: Tap **[ START 440 Hz ACOUSTIC TEST ]** to hear pure, synchronized concert pitch 'A' playing across all devices simultaneously!
 6. **To Broadcast via GhostMegaphone**: On the Host, press and hold the glowing LaSync logo at the top or the **[ HOLD TO TALK ]** button to speak. All connected phones will instantly boost to 100% volume and broadcast your voice with zero delay! Release to un-duck music and restore previous receiver volumes.
+7. **To Fine-Tune Multi-Phone Sync (SoundBoard)**: On the Host screen, each connected phone appears as a mixing strip. Tap `[ -10ms ]` / `[ +10ms ]` to compensate for Bluetooth delays or room echoes, adjust volume remotely, or tap **[ SOLO ]** to isolate one phone!

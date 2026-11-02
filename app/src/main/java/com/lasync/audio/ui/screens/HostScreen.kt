@@ -163,7 +163,7 @@ fun HostScreen(
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = "SYNCHRONIZED LISTENERS",
+                    text = "SOUNDBOARD MIXER CONSOLE",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
@@ -231,7 +231,15 @@ fun HostScreen(
                     items = state.receivers,
                     key = { it.id }
                 ) { receiver ->
-                    ReceiverItemCard(receiver = receiver)
+                    ReceiverItemCard(
+                        receiver = receiver,
+                        onAdjustTrim = { delta -> engine.adjustReceiverDelayTrim(receiver.id, delta) },
+                        onResetTrim = { engine.setReceiverDelayTrim(receiver.id, 0) },
+                        onAdjustVolume = { delta -> engine.adjustReceiverVolume(receiver.id, delta) },
+                        onToggleMute = { engine.toggleReceiverMute(receiver.id) },
+                        onToggleSolo = { engine.toggleReceiverSolo(receiver.id) },
+                        onDisconnect = { engine.disconnectReceiver(receiver.id) }
+                    )
                 }
             }
         }

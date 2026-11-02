@@ -1,4 +1,6 @@
-﻿package com.lasync.audio.core.sync
+package com.lasync.audio.core.sync
+
+import com.lasync.audio.core.audio.AudioOutputHardware
 
 data class ReceiverNode(
     val id: String,
@@ -10,5 +12,10 @@ data class ReceiverNode(
     val offsetMs: Float = 0f,
     val packetLossPercent: Float = 0f,
     val lastSeenMonotonicNanos: Long = 0L,
-    val isSynchronized: Boolean = false
+    val isSynchronized: Boolean = false,
+    val outputHardware: AudioOutputHardware = AudioOutputHardware.SPEAKER,
+    val delayTrimMs: Int = 0,
+    val volumePercent: Int = 100,
+    val isMuted: Boolean = false,
+    val isSolo: Boolean = false
 )

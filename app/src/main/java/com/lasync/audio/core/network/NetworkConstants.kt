@@ -16,6 +16,8 @@ object NetworkConstants {
     const val TYPE_LEAVE: Byte = 7
     const val TYPE_MEGAPHONE_START: Byte = 0x10
     const val TYPE_MEGAPHONE_STOP: Byte = 0x11
+    const val TYPE_REMOTE_CONFIG: Byte = 0x12
+    const val TYPE_REMOTE_DISCONNECT: Byte = 0x13
 
     const val BEACON_INTERVAL_MS = 1000L
     const val PING_INTERVAL_FAST_MS = 200L

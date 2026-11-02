@@ -52,7 +52,11 @@ data class ReceiverUiState(
     val phaseErrorMs: Float = 0f,
     val isPhaseLocked: Boolean = false,
     val isHardwareTimestampSupported: Boolean = false,
-    val isMegaphoneActive: Boolean = false
+    val isMegaphoneActive: Boolean = false,
+    val outputHardware: com.lasync.audio.core.audio.AudioOutputHardware = com.lasync.audio.core.audio.AudioOutputHardware.SPEAKER,
+    val delayTrimMs: Int = 0,
+    val remoteVolumePercent: Int = 100,
+    val isMutedByHost: Boolean = false
 )
 
 class ReceiverNetworkEngine(
@@ -254,6 +258,29 @@ class ReceiverNetworkEngine(
                 audioEngine.onMegaphoneStopped()
                 _uiState.value = _uiState.value.copy(isMegaphoneActive = false)
             }
+
+            NetworkConstants.TYPE_REMOTE_CONFIG -> {
+                if (packet.payload.size >= 9) {
+                    val bb = ByteBuffer.wrap(packet.payload).order(ByteOrder.BIG_ENDIAN)
+                    val trimMs = bb.int
+                    val volPercent = bb.int
+                    val isMuted = bb.get().toInt() == 1
+
+                    audioEngine.setDelayTrimMs(trimMs)
+                    audioEngine.setRemoteVolume(volPercent, isMuted)
+
+                    _uiState.value = _uiState.value.copy(
+                        delayTrimMs = trimMs,
+                        remoteVolumePercent = volPercent,
+                        isMutedByHost = isMuted
+                    )
+                }
+            }
+
+            NetworkConstants.TYPE_REMOTE_DISCONNECT -> {
+                stop()
+                _uiState.value = ReceiverUiState(state = ReceiverState.IDLE)
+            }
         }
     }
 
@@ -341,12 +368,23 @@ class ReceiverNetworkEngine(
             while (isActive && _uiState.value.state == ReceiverState.CONNECTED) {
                 delay(1000L)
 
-                // Package telemetry: [rtt, jitter, offset, loss]
-                val bb = ByteBuffer.allocate(16).order(ByteOrder.BIG_ENDIAN)
+                // Package telemetry: [rtt, jitter, offset, loss, outputHardware, delayTrimMs]
+                val currentHw = com.lasync.audio.core.audio.AudioHardwareDetector.getActiveOutputHardware(context)
+                val currentTrim = audioEngine.delayTrimMs
+                _uiState.value = _uiState.value.copy(
+                    outputHardware = currentHw,
+                    delayTrimMs = currentTrim,
+                    remoteVolumePercent = audioEngine.remoteVolumePercent,
+                    isMutedByHost = audioEngine.isMutedByHost
+                )
+
+                val bb = ByteBuffer.allocate(21).order(ByteOrder.BIG_ENDIAN)
                 bb.putFloat(clockSyncEngine.getAverageRttMs())
                 bb.putFloat(clockSyncEngine.getJitterMs())
                 bb.putFloat((clockSyncEngine.getFilteredOffsetNanos() / 1_000_000.0).toFloat())
                 bb.putFloat(clockSyncEngine.getPacketLossPercent())
+                bb.put(currentHw.id.toByte())
+                bb.putInt(currentTrim)
 
                 val heartbeatPacket = ControlPacket(
                     type = NetworkConstants.TYPE_HEARTBEAT,

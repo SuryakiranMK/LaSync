@@ -95,6 +95,35 @@ class ReceiverAudioEngine(
     private val volumeOverrideManager = context?.let { VolumeOverrideManager(it) }
 
     @Volatile
+    var delayTrimMs: Int = 0
+        private set
+
+    @Volatile
+    var remoteVolumePercent: Int = 100
+        private set
+
+    @Volatile
+    var isMutedByHost: Boolean = false
+        private set
+
+    fun setDelayTrimMs(trimMs: Int) {
+        delayTrimMs = trimMs
+    }
+
+    fun setRemoteVolume(volumePercent: Int, isMuted: Boolean) {
+        remoteVolumePercent = volumePercent.coerceIn(0, 100)
+        isMutedByHost = isMuted
+        applyAudioTrackVolume()
+    }
+
+    private fun applyAudioTrackVolume() {
+        try {
+            val gain = if (isMutedByHost) 0f else (remoteVolumePercent / 100f)
+            audioTrack?.setVolume(gain)
+        } catch (_: Exception) {}
+    }
+
+    @Volatile
     private var lastMegaphonePacketTimeNs = 0L
 
     private var socketJob: Job? = null
@@ -258,7 +287,7 @@ class ReceiverAudioEngine(
 
             val queuedFrame = jitterQueue.poll()
             if (queuedFrame != null) {
-                lastTargetPresentationTimestampHostNs = queuedFrame.presentationTimestampNanos
+                lastTargetPresentationTimestampHostNs = queuedFrame.presentationTimestampNanos + (delayTrimMs * 1_000_000L)
                 val stereoFrame = AudioConstants.monoToStereo(queuedFrame.payload)
 
                 // WRITE_BLOCKING ensures full frame integrity
@@ -354,6 +383,8 @@ class ReceiverAudioEngine(
             .setTransferMode(AudioTrack.MODE_STREAM)
             .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
             .build()
+
+        applyAudioTrackVolume()
     }
 
     private fun cleanupAudioTrack() {

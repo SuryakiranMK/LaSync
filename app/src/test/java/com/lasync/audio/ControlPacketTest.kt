@@ -96,4 +96,46 @@ class ControlPacketTest {
         assertEquals(NetworkConstants.TYPE_MEGAPHONE_STOP, decodedStop!!.type)
         assertEquals("HOST99", decodedStop.sessionId)
     }
+
+    @Test
+    fun testSoundBoardRemoteConfigControlPacketRoundtrip() {
+        val bb = java.nio.ByteBuffer.allocate(9).order(java.nio.ByteOrder.BIG_ENDIAN)
+        bb.putInt(-25) // delayTrimMs: -25ms (Bluetooth latency compensation)
+        bb.putInt(80)  // volumePercent: 80%
+        bb.put(1.toByte()) // isMuted: true
+
+        val configPacket = ControlPacket(
+            type = NetworkConstants.TYPE_REMOTE_CONFIG,
+            sessionId = "MIXER1",
+            sequenceNumber = 5L,
+            senderId = "HOST",
+            payload = bb.array()
+        )
+        val configBytes = configPacket.toByteArray()
+        val decoded = ControlPacket.fromByteArray(configBytes, configBytes.size)
+
+        assertNotNull(decoded)
+        assertEquals(NetworkConstants.TYPE_REMOTE_CONFIG, decoded!!.type)
+        assertEquals(9, decoded.payload.size)
+
+        val readBb = java.nio.ByteBuffer.wrap(decoded.payload).order(java.nio.ByteOrder.BIG_ENDIAN)
+        assertEquals(-25, readBb.int)
+        assertEquals(80, readBb.int)
+        assertEquals(1.toByte(), readBb.get())
+    }
+
+    @Test
+    fun testSoundBoardDisconnectPacketRoundtrip() {
+        val disconnectPacket = ControlPacket(
+            type = NetworkConstants.TYPE_REMOTE_DISCONNECT,
+            sessionId = "MIXER1",
+            sequenceNumber = 6L,
+            senderId = "HOST"
+        )
+        val bytes = disconnectPacket.toByteArray()
+        val decoded = ControlPacket.fromByteArray(bytes, bytes.size)
+
+        assertNotNull(decoded)
+        assertEquals(NetworkConstants.TYPE_REMOTE_DISCONNECT, decoded!!.type)
+    }
 }

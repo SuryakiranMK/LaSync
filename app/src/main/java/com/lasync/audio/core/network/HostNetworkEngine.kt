@@ -144,6 +144,100 @@ class HostNetworkEngine(
         audioEngine.stopAll()
     }
 
+    // SoundBoard Mixer Console Actions
+    fun setReceiverDelayTrim(receiverId: String, trimMs: Int) {
+        val clamped = trimMs.coerceIn(-250, 350)
+        receiversMap[receiverId]?.let { node ->
+            receiversMap[receiverId] = node.copy(delayTrimMs = clamped)
+            sendRemoteConfigToReceiver(receiverId)
+            updateUiState()
+        }
+    }
+
+    fun adjustReceiverDelayTrim(receiverId: String, deltaMs: Int) {
+        receiversMap[receiverId]?.let { node ->
+            setReceiverDelayTrim(receiverId, node.delayTrimMs + deltaMs)
+        }
+    }
+
+    fun setReceiverVolume(receiverId: String, volumePercent: Int) {
+        val clamped = volumePercent.coerceIn(0, 100)
+        receiversMap[receiverId]?.let { node ->
+            receiversMap[receiverId] = node.copy(volumePercent = clamped)
+            sendRemoteConfigToReceiver(receiverId)
+            updateUiState()
+        }
+    }
+
+    fun adjustReceiverVolume(receiverId: String, deltaPercent: Int) {
+        receiversMap[receiverId]?.let { node ->
+            setReceiverVolume(receiverId, node.volumePercent + deltaPercent)
+        }
+    }
+
+    fun toggleReceiverMute(receiverId: String) {
+        receiversMap[receiverId]?.let { node ->
+            receiversMap[receiverId] = node.copy(isMuted = !node.isMuted)
+            sendRemoteConfigToReceiver(receiverId)
+            updateUiState()
+        }
+    }
+
+    fun toggleReceiverSolo(receiverId: String) {
+        val targetNode = receiversMap[receiverId] ?: return
+        val currentlySolo = targetNode.isSolo
+
+        if (currentlySolo) {
+            // Un-solo: clear solo and unmute all
+            receiversMap.forEach { (id, node) ->
+                receiversMap[id] = node.copy(isSolo = false, isMuted = false)
+                sendRemoteConfigToReceiver(id)
+            }
+        } else {
+            // Solo this receiver: mute all others
+            receiversMap.forEach { (id, node) ->
+                val isTarget = (id == receiverId)
+                receiversMap[id] = node.copy(isSolo = isTarget, isMuted = !isTarget)
+                sendRemoteConfigToReceiver(id)
+            }
+        }
+        updateUiState()
+    }
+
+    fun disconnectReceiver(receiverId: String) {
+        val node = receiversMap.remove(receiverId) ?: return
+        updateUiState()
+        val packet = ControlPacket(
+            type = NetworkConstants.TYPE_REMOTE_DISCONNECT,
+            sessionId = sessionId,
+            sequenceNumber = 0L,
+            senderId = "HOST"
+        )
+        try {
+            val addr = InetAddress.getByName(node.ipAddress)
+            sendPacket(packet, addr, node.port)
+        } catch (_: Exception) {}
+    }
+
+    private fun sendRemoteConfigToReceiver(receiverId: String) {
+        val node = receiversMap[receiverId] ?: return
+        val bb = ByteBuffer.allocate(9).order(ByteOrder.BIG_ENDIAN)
+        bb.putInt(node.delayTrimMs)
+        bb.putInt(node.volumePercent)
+        bb.put(if (node.isMuted) 1.toByte() else 0.toByte())
+        val packet = ControlPacket(
+            type = NetworkConstants.TYPE_REMOTE_CONFIG,
+            sessionId = sessionId,
+            sequenceNumber = 0L,
+            senderId = "HOST",
+            payload = bb.array()
+        )
+        try {
+            val addr = InetAddress.getByName(node.ipAddress)
+            sendPacket(packet, addr, node.port)
+        } catch (_: Exception) {}
+    }
+
     fun start(customSessionId: String? = null) {
         if (socket != null && !socket!!.isClosed) return
 
@@ -252,7 +346,7 @@ class HostNetworkEngine(
 
             NetworkConstants.TYPE_HEARTBEAT -> {
                 // Parse telemetry metrics from payload
-                // Format: Float(rttMs), Float(jitterMs), Float(offsetMs), Float(packetLoss)
+                // Format: Float(rttMs), Float(jitterMs), Float(offsetMs), Float(packetLoss), [Byte(outputHw), Int(activeTrim)]
                 if (packet.payload.size >= 16) {
                     val bb = ByteBuffer.wrap(packet.payload).order(ByteOrder.BIG_ENDIAN)
                     val rtt = bb.float
@@ -260,12 +354,19 @@ class HostNetworkEngine(
                     val offset = bb.float
                     val loss = bb.float
 
+                    val outputHw = if (bb.hasRemaining()) {
+                        com.lasync.audio.core.audio.AudioOutputHardware.fromId(bb.get().toInt())
+                    } else {
+                        com.lasync.audio.core.audio.AudioOutputHardware.SPEAKER
+                    }
+
                     receiversMap[packet.senderId]?.let { existing ->
                         receiversMap[packet.senderId] = existing.copy(
                             rttMs = rtt,
                             jitterMs = jitter,
                             offsetMs = offset,
                             packetLossPercent = loss,
+                            outputHardware = outputHw,
                             lastSeenMonotonicNanos = t2Nanos,
                             isSynchronized = rtt > 0f && rtt < 25f
                         )

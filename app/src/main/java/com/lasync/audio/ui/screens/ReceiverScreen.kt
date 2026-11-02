@@ -252,6 +252,69 @@ fun ReceiverScreen(
                                     fontFamily = FontFamily.Monospace,
                                     color = QuantumMint
                                 )
+
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Hardware sink badge
+                                    val (hwName, hwCol) = when (state.outputHardware) {
+                                        com.lasync.audio.core.audio.AudioOutputHardware.BLUETOOTH -> "🎧 Bluetooth" to Ultraviolet
+                                        com.lasync.audio.core.audio.AudioOutputHardware.WIRED -> "🎧 Wired" to HyperCyan
+                                        com.lasync.audio.core.audio.AudioOutputHardware.USB -> "🔌 USB DAC" to HyperCyan
+                                        com.lasync.audio.core.audio.AudioOutputHardware.SPEAKER,
+                                        com.lasync.audio.core.audio.AudioOutputHardware.UNKNOWN -> "🔊 Speaker" to QuantumMint
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .background(hwCol.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                            .border(1.dp, hwCol.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                                    ) {
+                                        Text(
+                                            text = hwName,
+                                            fontSize = 9.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = FontWeight.Bold,
+                                            color = hwCol
+                                        )
+                                    }
+
+                                    if (state.delayTrimMs != 0) {
+                                        Box(
+                                            modifier = Modifier
+                                                .background(SolarAmber.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                                .border(1.dp, SolarAmber.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                                        ) {
+                                            Text(
+                                                text = "Trim: ${if (state.delayTrimMs > 0) "+${state.delayTrimMs}" else "${state.delayTrimMs}"}ms",
+                                                fontSize = 9.sp,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Bold,
+                                                color = SolarAmber
+                                            )
+                                        }
+                                    }
+
+                                    if (state.isMutedByHost) {
+                                        Box(
+                                            modifier = Modifier
+                                                .background(CrimsonPulse.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                                .border(1.dp, CrimsonPulse.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                                        ) {
+                                            Text(
+                                                text = "🔇 Muted by Host",
+                                                fontSize = 9.sp,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CrimsonPulse
+                                            )
+                                        }
+                                    }
+                                }
                             }
 
                             LaSyncWaveEqualizer(tint = HyperCyan, maxHeight = 18.dp)
