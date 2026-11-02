@@ -145,12 +145,14 @@ class MainActivity : ComponentActivity() {
                         state.isMegaphoneActive -> "LaSync Master • Ghost Megaphone"
                         state.activeAudioSource == com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE -> "LaSync Master • Sharing Music"
                         state.activeAudioSource == com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE -> "LaSync Master • 440 Hz Tone"
+                        state.activeAudioSource == com.lasync.audio.core.audio.HostAudioSource.RAM_JUKEBOX -> "LaSync Master • RAM Jukebox"
                         else -> "LaSync Master Host • ${state.sessionId}"
                     }
                     val msg = when {
                         state.isMegaphoneActive -> "🎙️ Live Walkie-Talkie broadcast to ${state.receivers.size} phone(s) at MAX volume"
                         state.activeAudioSource == com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE -> "🎵 Streaming System Music [${state.bufferMode.title}] to ${state.receivers.size} phone(s) • ${state.audioFramesSent} frames"
                         state.activeAudioSource == com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE -> "🔊 Synchronized 440 Hz tone [${state.bufferMode.title}] • ${state.audioFramesSent} frames"
+                        state.activeAudioSource == com.lasync.audio.core.audio.HostAudioSource.RAM_JUKEBOX -> "🎵 RAM Jukebox: ${state.loadedJukeboxTrack?.title ?: "Playing"} (Zero-Traffic) • ${state.receivers.size} phone(s)"
                         else -> if (state.receivers.isEmpty()) "🟢 Beaconing on LAN • Waiting for listeners" else "🟢 ${state.receivers.size} listener(s) phase-locked"
                     }
                     LaSyncForegroundService.updateNotification(
@@ -172,6 +174,12 @@ class MainActivity : ComponentActivity() {
                     } else if (isConnected) "LaSync Receiver • Phase-Locked" else "LaSync Receiver • Discovering"
                     val msg = if (receiverState.isMegaphoneActive) {
                         "🎙️ Host live voice @ 100% volume from ${receiverState.connectedHostName}"
+                    } else if (receiverState.isJukeboxPlaying) {
+                        "🎵 RAM Jukebox: ${receiverState.jukeboxTrackTitle} (Zero-Traffic) • RTT ${receiverState.rttMs.toInt()}ms"
+                    } else if (receiverState.isJukeboxDownloading) {
+                        "⚡ Preloading RAM track: ${(receiverState.jukeboxDownloadProgress * 100).toInt()}%"
+                    } else if (receiverState.isJukeboxReady) {
+                        "✅ RAM Jukebox Ready: ${receiverState.jukeboxTrackTitle}"
                     } else if (isConnected) {
                         if (receiverState.isAudioPlaying) {
                             "🎵 Playing Master Stream • ${receiverState.audioFramesReceived} frames • RTT ${receiverState.rttMs.toInt()}ms"

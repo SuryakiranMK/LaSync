@@ -30,7 +30,14 @@ data class HostUiState(
     val audioFramesSent: Long = 0L,
     val activeAudioSource: com.lasync.audio.core.audio.HostAudioSource = com.lasync.audio.core.audio.HostAudioSource.IDLE,
     val bufferMode: com.lasync.audio.core.audio.SyncBufferMode = com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC,
-    val isMegaphoneActive: Boolean = false
+    val isMegaphoneActive: Boolean = false,
+    val loadedJukeboxTrack: com.lasync.audio.core.jukebox.JukeboxTrack? = null,
+    val isJukeboxDecoding: Boolean = false,
+    val jukeboxDecodeProgress: Float = 0f,
+    val isJukeboxPlaying: Boolean = false,
+    val jukeboxPositionMs: Long = 0L,
+    val jukeboxProgress: Float = 0f,
+    val readyReceiversCount: Int = 0
 )
 
 class HostNetworkEngine(
@@ -83,6 +90,36 @@ class HostNetworkEngine(
                     _uiState.value = _uiState.value.copy(isMegaphoneActive = isMegaphone)
                 }
             }
+            launch {
+                audioEngine.loadedJukeboxTrack.collect { track ->
+                    _uiState.value = _uiState.value.copy(loadedJukeboxTrack = track)
+                }
+            }
+            launch {
+                audioEngine.isJukeboxDecoding.collect { decoding ->
+                    _uiState.value = _uiState.value.copy(isJukeboxDecoding = decoding)
+                }
+            }
+            launch {
+                audioEngine.jukeboxDecodeProgress.collect { prog ->
+                    _uiState.value = _uiState.value.copy(jukeboxDecodeProgress = prog)
+                }
+            }
+            launch {
+                audioEngine.jukeboxPlaybackEngine.isPlayingState.collect { playing ->
+                    _uiState.value = _uiState.value.copy(isJukeboxPlaying = playing)
+                }
+            }
+            launch {
+                audioEngine.jukeboxPlaybackEngine.playbackPositionMs.collect { pos ->
+                    _uiState.value = _uiState.value.copy(jukeboxPositionMs = pos)
+                }
+            }
+            launch {
+                audioEngine.jukeboxPlaybackEngine.playbackProgress.collect { prog ->
+                    _uiState.value = _uiState.value.copy(jukeboxProgress = prog)
+                }
+            }
         }
     }
 
@@ -106,6 +143,10 @@ class HostNetworkEngine(
             sequenceNumber = 0L,
             senderId = "HOST"
         )
+        broadcastControlPacket(packet)
+    }
+
+    private fun broadcastControlPacket(packet: ControlPacket) {
         // Send to all registered receivers
         for (receiver in receiversMap.values) {
             try {
@@ -142,6 +183,48 @@ class HostNetworkEngine(
 
     fun stopAllAudio() {
         audioEngine.stopAll()
+    }
+
+    private val readyReceiversSet = ConcurrentHashMap.newKeySet<String>()
+
+    suspend fun loadJukeboxFile(context: android.content.Context, uri: android.net.Uri): com.lasync.audio.core.jukebox.JukeboxTrack? {
+        val track = audioEngine.loadJukeboxTrack(context, uri)
+        if (track != null) {
+            readyReceiversSet.clear()
+            _uiState.value = _uiState.value.copy(readyReceiversCount = 0)
+            broadcastControlPacket(NetworkConstants.TYPE_JUKEBOX_PRELOAD_START)
+        }
+        return track
+    }
+
+    fun playJukebox(startOffsetMs: Long = 0L) {
+        val now = SystemClock.elapsedRealtimeNanos()
+        val scheduledStartNanos = now + 400_000_000L // 400ms lead time for scheduled phase-locked trigger
+        audioEngine.playJukebox(scheduledStartNanos, startOffsetMs)
+
+        val packet = ControlPacket(
+            type = NetworkConstants.TYPE_JUKEBOX_PLAY,
+            sessionId = sessionId,
+            sequenceNumber = 0L,
+            senderId = "HOST",
+            t1 = scheduledStartNanos,
+            t2 = startOffsetMs
+        )
+        broadcastControlPacket(packet)
+    }
+
+    fun pauseJukebox() {
+        audioEngine.pauseJukebox()
+        broadcastControlPacket(NetworkConstants.TYPE_JUKEBOX_PAUSE)
+    }
+
+    fun stopJukebox() {
+        audioEngine.stopJukebox()
+        broadcastControlPacket(NetworkConstants.TYPE_JUKEBOX_STOP)
+    }
+
+    fun seekJukebox(positionMs: Long) {
+        playJukebox(positionMs)
     }
 
     // SoundBoard Mixer Console Actions
@@ -377,7 +460,14 @@ class HostNetworkEngine(
 
             NetworkConstants.TYPE_LEAVE -> {
                 receiversMap.remove(packet.senderId)
+                readyReceiversSet.remove(packet.senderId)
+                _uiState.value = _uiState.value.copy(readyReceiversCount = readyReceiversSet.size)
                 updateUiState()
+            }
+
+            NetworkConstants.TYPE_JUKEBOX_READY -> {
+                readyReceiversSet.add(packet.senderId)
+                _uiState.value = _uiState.value.copy(readyReceiversCount = readyReceiversSet.size)
             }
         }
     }

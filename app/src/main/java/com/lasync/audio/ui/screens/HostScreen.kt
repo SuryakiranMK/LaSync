@@ -1,6 +1,8 @@
 package com.lasync.audio.ui.screens
 
 import android.media.projection.MediaProjection
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,17 +26,24 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.lasync.audio.core.network.HostNetworkEngine
 import com.lasync.audio.ui.components.LaSyncButton
 import com.lasync.audio.ui.components.LaSyncRadar
@@ -73,7 +83,18 @@ fun HostScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val state by engine.uiState.collectAsState()
+
+    val jukeboxPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            scope.launch {
+                engine.loadJukeboxFile(context, uri)
+            }
+        }
+    }
 
     Column(
         modifier = modifier
@@ -370,6 +391,8 @@ fun HostScreen(
                             Brush.linearGradient(listOf(QuantumMint, HyperCyan))
                         com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE ->
                             Brush.linearGradient(listOf(CrimsonPulse, Ultraviolet))
+                        com.lasync.audio.core.audio.HostAudioSource.RAM_JUKEBOX ->
+                            Brush.linearGradient(listOf(SolarAmber, HyperCyan))
                         com.lasync.audio.core.audio.HostAudioSource.IDLE ->
                             Brush.linearGradient(listOf(HyperCyan.copy(alpha = 0.4f), BorderNeon))
                     },
@@ -516,6 +539,134 @@ fun HostScreen(
                         )
                     }
 
+                    com.lasync.audio.core.audio.HostAudioSource.RAM_JUKEBOX -> {
+                        val track = state.loadedJukeboxTrack
+                        val totalDurationMs = track?.durationMs ?: 0L
+                        val currentPosMs = state.jukeboxPositionMs
+
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f, fill = false)
+                                ) {
+                                    LaSyncWaveEqualizer(tint = SolarAmber, maxHeight = 18.dp)
+                                    Column {
+                                        Text(
+                                            text = "RAM JUKEBOX • ZERO-TRAFFIC",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace,
+                                            color = SolarAmber,
+                                            letterSpacing = 0.5.sp
+                                        )
+                                        Text(
+                                            text = track?.title ?: "Local Audio Track",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(SolarAmber.copy(alpha = 0.15f))
+                                        .border(1.dp, SolarAmber.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                                ) {
+                                    Text(
+                                        text = "${state.readyReceiversCount}/${state.receivers.size} READY",
+                                        fontSize = 10.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SolarAmber
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Timeline Progress & Seeking
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = formatTime(currentPosMs),
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = SolarAmber,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = formatTime(totalDurationMs),
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = TextMuted
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            // Interactive Seek Slider
+                            Slider(
+                                value = state.jukeboxProgress.coerceIn(0f, 1f),
+                                onValueChange = { frac ->
+                                    val targetMs = (frac * totalDurationMs).toLong()
+                                    engine.seekJukebox(targetMs)
+                                },
+                                colors = SliderDefaults.colors(
+                                    thumbColor = SolarAmber,
+                                    activeTrackColor = SolarAmber,
+                                    inactiveTrackColor = CarbonCardHighlight
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Play / Pause / Stop Controls Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (state.isJukeboxPlaying) {
+                                    LaSyncButton(
+                                        text = "PAUSE",
+                                        icon = Icons.Default.Pause,
+                                        accentColor = SolarAmber,
+                                        onClick = { engine.pauseJukebox() },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                } else {
+                                    LaSyncButton(
+                                        text = "PLAY",
+                                        icon = Icons.Default.PlayArrow,
+                                        accentColor = QuantumMint,
+                                        onClick = { engine.playJukebox(state.jukeboxPositionMs) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+
+                                LaSyncButton(
+                                    text = "STOP",
+                                    icon = Icons.Default.Stop,
+                                    accentColor = CrimsonPulse,
+                                    onClick = { engine.stopJukebox() },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+
                     com.lasync.audio.core.audio.HostAudioSource.IDLE -> {
                         // System Music Sharing Button (Hero feature)
                         LaSyncButton(
@@ -540,6 +691,88 @@ fun HostScreen(
                             color = TextSecondary,
                             textAlign = TextAlign.Center
                         )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Offline RAM Jukebox File Picker
+                        LaSyncButton(
+                            text = if (state.isJukeboxDecoding) "DECODING AUDIO FILE..." else "PLAY LOCAL FILE (RAM JUKEBOX)",
+                            icon = Icons.Default.FolderOpen,
+                            accentColor = SolarAmber,
+                            onClick = {
+                                if (!state.isJukeboxDecoding) {
+                                    jukeboxPickerLauncher.launch("audio/*")
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        if (state.isJukeboxDecoding) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            LinearProgressIndicator(
+                                progress = { state.jukeboxDecodeProgress },
+                                color = SolarAmber,
+                                trackColor = CarbonCardHighlight,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Decoding uncompressed 16-bit PCM: ${(state.jukeboxDecodeProgress * 100).toInt()}%",
+                                fontSize = 9.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = SolarAmber
+                            )
+                        } else if (state.loadedJukeboxTrack != null) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(CarbonCardHighlight)
+                                    .border(1.dp, SolarAmber.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Preloaded: ${state.loadedJukeboxTrack!!.title}",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = SolarAmber,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            text = "${formatTime(state.loadedJukeboxTrack!!.durationMs)} • ${state.readyReceiversCount}/${state.receivers.size} listeners ready",
+                                            fontSize = 9.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            color = TextMuted
+                                        )
+                                    }
+                                    LaSyncButton(
+                                        text = "PLAY",
+                                        icon = Icons.Default.PlayArrow,
+                                        accentColor = QuantumMint,
+                                        onClick = { engine.playJukebox() },
+                                        modifier = Modifier.height(34.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Streams MP3, FLAC, WAV, AAC from device RAM • ZERO Wi-Fi traffic",
+                                fontSize = 10.sp,
+                                color = TextSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(10.dp))
 
@@ -720,4 +953,11 @@ fun HostScreen(
             )
         }
     }
+}
+
+private fun formatTime(ms: Long): String {
+    val totalSec = (ms / 1000).coerceAtLeast(0)
+    val minutes = totalSec / 60
+    val seconds = totalSec % 60
+    return String.format(java.util.Locale.US, "%02d:%02d", minutes, seconds)
 }

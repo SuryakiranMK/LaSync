@@ -26,7 +26,8 @@ enum class HostAudioSource {
     IDLE,
     SYNTHETIC_TONE,
     SYSTEM_CAPTURE,
-    MEGAPHONE
+    MEGAPHONE,
+    RAM_JUKEBOX
 }
 
 /**
@@ -58,6 +59,18 @@ class HostAudioEngine(
 
     private val _isMegaphoneActive = MutableStateFlow(false)
     val isMegaphoneActive: StateFlow<Boolean> = _isMegaphoneActive.asStateFlow()
+
+    val jukeboxPlaybackEngine = com.lasync.audio.core.jukebox.JukeboxPlaybackEngine(scope)
+    val jukeboxServer = com.lasync.audio.core.jukebox.JukeboxHostServer(scope)
+
+    private val _loadedJukeboxTrack = MutableStateFlow<com.lasync.audio.core.jukebox.JukeboxTrack?>(null)
+    val loadedJukeboxTrack: StateFlow<com.lasync.audio.core.jukebox.JukeboxTrack?> = _loadedJukeboxTrack.asStateFlow()
+
+    private val _isJukeboxDecoding = MutableStateFlow(false)
+    val isJukeboxDecoding: StateFlow<Boolean> = _isJukeboxDecoding.asStateFlow()
+
+    private val _jukeboxDecodeProgress = MutableStateFlow(0f)
+    val jukeboxDecodeProgress: StateFlow<Float> = _jukeboxDecodeProgress.asStateFlow()
 
     private var audioJob: Job? = null
     private var udpSocket: DatagramSocket? = null
@@ -207,12 +220,56 @@ class HostAudioEngine(
         previousSourceBeforeMegaphone = HostAudioSource.IDLE
     }
 
+    suspend fun loadJukeboxTrack(context: Context, uri: android.net.Uri): com.lasync.audio.core.jukebox.JukeboxTrack? {
+        stopAll()
+        _isJukeboxDecoding.value = true
+        _jukeboxDecodeProgress.value = 0f
+
+        val track = com.lasync.audio.core.jukebox.AudioFileDecoder.decodeTrack(context, uri) { progress ->
+            _jukeboxDecodeProgress.value = progress
+        }
+
+        _isJukeboxDecoding.value = false
+        if (track != null) {
+            _loadedJukeboxTrack.value = track
+            _activeSource.value = HostAudioSource.RAM_JUKEBOX
+            jukeboxServer.startServer(track)
+        }
+        return track
+    }
+
+    fun playJukebox(scheduledStartNanos: Long, startPositionMs: Long) {
+        val track = _loadedJukeboxTrack.value ?: return
+        _activeSource.value = HostAudioSource.RAM_JUKEBOX
+        _isStreaming.value = true
+        jukeboxPlaybackEngine.startScheduledPlayback(
+            track = track,
+            scheduledStartNanos = scheduledStartNanos,
+            startPositionMs = startPositionMs,
+            getNowNanos = { SystemClock.elapsedRealtimeNanos() }
+        )
+    }
+
+    fun pauseJukebox() {
+        jukeboxPlaybackEngine.pausePlayback()
+    }
+
+    fun stopJukebox() {
+        jukeboxPlaybackEngine.stopPlayback()
+        _isStreaming.value = false
+        if (_activeSource.value == HostAudioSource.RAM_JUKEBOX) {
+            _activeSource.value = HostAudioSource.IDLE
+        }
+    }
+
     fun stopAll() {
         stopMegaphone()
+        stopJukebox()
         when (_activeSource.value) {
             HostAudioSource.SYNTHETIC_TONE -> stopTone()
             HostAudioSource.SYSTEM_CAPTURE -> stopSystemAudio()
             HostAudioSource.MEGAPHONE -> stopMegaphone()
+            HostAudioSource.RAM_JUKEBOX -> stopJukebox()
             HostAudioSource.IDLE -> cleanupResources()
         }
     }

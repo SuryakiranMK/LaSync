@@ -10,11 +10,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SuryakiranMK/LaSync/releases/download/v1.0.8/LaSync.apk">
-    <img src="https://img.shields.io/badge/Download%20APK-v1.0.8-00F2FE?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
+  <a href="https://github.com/SuryakiranMK/LaSync/releases/download/v1.1.0/LaSync.apk">
+    <img src="https://img.shields.io/badge/Download%20APK-v1.1.0-00F2FE?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
   </a>
   <a href="https://github.com/SuryakiranMK/LaSync/releases/latest">
-    <img src="https://img.shields.io/badge/Release-v1.0.8-9D4EDD?style=for-the-badge" alt="Release Version" />
+    <img src="https://img.shields.io/badge/Release-v1.1.0-9D4EDD?style=for-the-badge" alt="Release Version" />
   </a>
 </p>
 
@@ -89,6 +89,13 @@ LaSync features a proprietary **"Cyber-Acoustic Precision"** design language:
 - **Hardware Route Detection**: Automatically detects and displays whether each receiver outputs to 🎧 Bluetooth, 🔊 Built-in Speaker, or 🔌 USB DAC.
 - **Remote Mixer Strip Controls**: Per-phone remote volume steppers (`-10%`, `+10%`), channel MUTE, studio SOLO isolation, and remote DROP/disconnect.
 
+### Phase 5: RAMJukebox (Offline Zero-Traffic Audio Player)
+- **Local Media File Picker**: Storage Access Framework integration on Host for picking MP3, FLAC, WAV, AAC, and M4A audio files.
+- **Hardware Accelerated Linear PCM Decoding**: Uses Android's `MediaExtractor` and `MediaCodec` to decode compressed audio into 16-bit stereo PCM buffers with real-time decoding progress.
+- **Fast TCP Blast Server/Client**: Streams uncompressed audio directly into receiver phones' RAM buffers on Port `8890` in 1–2 seconds.
+- **Offline Zero-Traffic Playback**: Once preloaded, synchronized microsecond-scheduled playback triggers across all phones directly from RAM with **zero Wi-Fi data transfer** during playback (completely immune to packet drops or router congestion).
+- **Synchronized Playback Controls & Seeking**: Full Play, Pause, Stop, and seek scrubbing synchronized across Master Host and listener screens.
+
 ---
 
 ## 🛠 Building & Running
@@ -125,3 +132,4 @@ adb install -r LaSync.apk
 5. **To Test Tone Sync**: Tap **[ START 440 Hz ACOUSTIC TEST ]** to hear pure, synchronized concert pitch 'A' playing across all devices simultaneously!
 6. **To Broadcast via GhostMegaphone**: On the Host, press and hold the glowing LaSync logo at the top or the **[ HOLD TO TALK ]** button to speak. All connected phones will instantly boost to 100% volume and broadcast your voice with zero delay! Release to un-duck music and restore previous receiver volumes.
 7. **To Fine-Tune Multi-Phone Sync (SoundBoard)**: On the Host screen, each connected phone appears as a mixing strip. Tap `[ -10ms ]` / `[ +10ms ]` to compensate for Bluetooth delays or room echoes, adjust volume remotely, or tap **[ SOLO ]** to isolate one phone!
+8. **To Play Offline Audio (RAMJukebox)**: On the Host, tap **[ PLAY LOCAL FILE (RAM JUKEBOX) ]** and choose an MP3, FLAC, WAV, or AAC file. The song is decoded and blasted directly into all connected phones' RAM in 1–2 seconds. Hit **[ PLAY ]** to trigger synchronized phase-locked playback with ZERO Wi-Fi traffic during playback!

@@ -22,10 +22,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -379,6 +381,161 @@ fun ReceiverScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // RAM Jukebox Preload & Playback Banner
+                    AnimatedVisibility(
+                        visible = state.isJukeboxDownloading || state.isJukeboxReady || state.isJukeboxPlaying,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        Column {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(
+                                        when {
+                                            state.isJukeboxPlaying -> SolarAmber.copy(alpha = 0.15f)
+                                            state.isJukeboxDownloading -> HyperCyan.copy(alpha = 0.15f)
+                                            else -> QuantumMint.copy(alpha = 0.12f)
+                                        }
+                                    )
+                                    .border(
+                                        1.5.dp,
+                                        when {
+                                            state.isJukeboxPlaying -> SolarAmber
+                                            state.isJukeboxDownloading -> HyperCyan
+                                            else -> QuantumMint
+                                        },
+                                        RoundedCornerShape(16.dp)
+                                    )
+                                    .padding(14.dp)
+                            ) {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        ) {
+                                            if (state.isJukeboxPlaying) {
+                                                LaSyncWaveEqualizer(tint = SolarAmber, maxHeight = 20.dp)
+                                            } else {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(34.dp)
+                                                        .clip(CircleShape)
+                                                        .background(
+                                                            if (state.isJukeboxDownloading) HyperCyan.copy(alpha = 0.2f)
+                                                            else QuantumMint.copy(alpha = 0.2f)
+                                                        ),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = if (state.isJukeboxDownloading) Icons.Default.Sensors else Icons.Default.MusicNote,
+                                                        contentDescription = null,
+                                                        tint = if (state.isJukeboxDownloading) HyperCyan else QuantumMint,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                }
+                                            }
+
+                                            Column {
+                                                Text(
+                                                    text = when {
+                                                        state.isJukeboxPlaying -> "RAM JUKEBOX (ZERO TRAFFIC)"
+                                                        state.isJukeboxDownloading -> "PRELOADING TRACK INTO RAM..."
+                                                        else -> "RAM JUKEBOX BUFFER READY"
+                                                    },
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    color = when {
+                                                        state.isJukeboxPlaying -> SolarAmber
+                                                        state.isJukeboxDownloading -> HyperCyan
+                                                        else -> QuantumMint
+                                                    },
+                                                    letterSpacing = 0.5.sp
+                                                )
+                                                Text(
+                                                    text = state.jukeboxTrackTitle.ifBlank { "Offline Audio Track" },
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = TextPrimary,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
+
+                                        if (state.isJukeboxDownloading) {
+                                            Text(
+                                                text = "${(state.jukeboxDownloadProgress * 100).toInt()}%",
+                                                fontSize = 13.sp,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Black,
+                                                color = HyperCyan
+                                            )
+                                        } else if (state.isJukeboxPlaying) {
+                                            Text(
+                                                text = "0 KB/s",
+                                                fontSize = 11.sp,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Bold,
+                                                color = QuantumMint
+                                            )
+                                        }
+                                    }
+
+                                    if (state.isJukeboxDownloading) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        LinearProgressIndicator(
+                                            progress = { state.jukeboxDownloadProgress },
+                                            color = HyperCyan,
+                                            trackColor = CarbonCardHighlight,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(4.dp)
+                                                .clip(RoundedCornerShape(2.dp))
+                                        )
+                                    } else if (state.isJukeboxPlaying) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        LinearProgressIndicator(
+                                            progress = { state.jukeboxProgress },
+                                            color = SolarAmber,
+                                            trackColor = CarbonCardHighlight,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(4.dp)
+                                                .clip(RoundedCornerShape(2.dp))
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = formatTime(state.jukeboxPositionMs),
+                                                fontSize = 10.sp,
+                                                fontFamily = FontFamily.Monospace,
+                                                color = SolarAmber
+                                            )
+                                            Text(
+                                                text = formatTime(state.jukeboxDurationMs),
+                                                fontSize = 10.sp,
+                                                fontFamily = FontFamily.Monospace,
+                                                color = TextMuted
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(14.dp))
+                        }
+                    }
+
                     // Phase 2: Active Acoustic Stream Indicator Banner
                     AnimatedVisibility(
                         visible = state.isAudioPlaying,
@@ -650,4 +807,11 @@ private fun DiscoveredHostItem(
             }
         }
     }
+}
+
+private fun formatTime(ms: Long): String {
+    val totalSec = (ms / 1000).coerceAtLeast(0)
+    val minutes = totalSec / 60
+    val seconds = totalSec % 60
+    return String.format(java.util.Locale.US, "%02d:%02d", minutes, seconds)
 }

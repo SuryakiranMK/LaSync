@@ -138,4 +138,39 @@ class ControlPacketTest {
         assertNotNull(decoded)
         assertEquals(NetworkConstants.TYPE_REMOTE_DISCONNECT, decoded!!.type)
     }
+
+    @Test
+    fun testJukeboxControlPacketsRoundtrip() {
+        val scheduledStart = 1_500_000_000_000L
+        val startOffsetMs = 45_000L
+
+        val playPacket = ControlPacket(
+            type = NetworkConstants.TYPE_JUKEBOX_PLAY,
+            sessionId = "JUKE01",
+            sequenceNumber = 10L,
+            senderId = "HOST",
+            t1 = scheduledStart,
+            t2 = startOffsetMs
+        )
+        val playBytes = playPacket.toByteArray()
+        val decodedPlay = ControlPacket.fromByteArray(playBytes, playBytes.size)
+
+        assertNotNull(decodedPlay)
+        assertEquals(NetworkConstants.TYPE_JUKEBOX_PLAY, decodedPlay!!.type)
+        assertEquals(scheduledStart, decodedPlay.t1)
+        assertEquals(startOffsetMs, decodedPlay.t2)
+
+        val readyPacket = ControlPacket(
+            type = NetworkConstants.TYPE_JUKEBOX_READY,
+            sessionId = "JUKE01",
+            sequenceNumber = 11L,
+            senderId = "RCV_01"
+        )
+        val readyBytes = readyPacket.toByteArray()
+        val decodedReady = ControlPacket.fromByteArray(readyBytes, readyBytes.size)
+
+        assertNotNull(decodedReady)
+        assertEquals(NetworkConstants.TYPE_JUKEBOX_READY, decodedReady!!.type)
+        assertEquals("RCV_01", decodedReady.senderId)
+    }
 }

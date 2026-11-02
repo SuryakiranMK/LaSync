@@ -114,6 +114,7 @@ class ReceiverAudioEngine(
         remoteVolumePercent = volumePercent.coerceIn(0, 100)
         isMutedByHost = isMuted
         applyAudioTrackVolume()
+        jukeboxPlaybackEngine.setVolume(if (isMuted) 0f else (remoteVolumePercent / 100f))
     }
 
     private fun applyAudioTrackVolume() {
@@ -121,6 +122,37 @@ class ReceiverAudioEngine(
             val gain = if (isMutedByHost) 0f else (remoteVolumePercent / 100f)
             audioTrack?.setVolume(gain)
         } catch (_: Exception) {}
+    }
+
+    val jukeboxPlaybackEngine = com.lasync.audio.core.jukebox.JukeboxPlaybackEngine(scope)
+
+    @Volatile
+    var loadedJukeboxTrack: com.lasync.audio.core.jukebox.JukeboxTrack? = null
+        private set
+
+    fun setJukeboxTrack(track: com.lasync.audio.core.jukebox.JukeboxTrack) {
+        loadedJukeboxTrack = track
+    }
+
+    fun playJukebox(scheduledStartNanos: Long, startPositionMs: Long) {
+        val track = loadedJukeboxTrack ?: return
+        val gain = if (isMutedByHost) 0f else (remoteVolumePercent / 100f)
+        jukeboxPlaybackEngine.startScheduledPlayback(
+            track = track,
+            scheduledStartNanos = scheduledStartNanos,
+            startPositionMs = startPositionMs,
+            getNowNanos = { clockSyncEngine.toMasterTimeNanos(SystemClock.elapsedRealtimeNanos()) },
+            delayTrimMs = delayTrimMs,
+            initialGain = gain
+        )
+    }
+
+    fun pauseJukebox() {
+        jukeboxPlaybackEngine.pausePlayback()
+    }
+
+    fun stopJukebox() {
+        jukeboxPlaybackEngine.stopPlayback()
     }
 
     @Volatile
@@ -173,6 +205,8 @@ class ReceiverAudioEngine(
 
     fun stopListening() {
         onMegaphoneStopped()
+        stopJukebox()
+        loadedJukeboxTrack = null
 
         socketJob?.cancel()
         socketJob = null

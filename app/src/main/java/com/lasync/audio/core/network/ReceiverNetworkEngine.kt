@@ -56,7 +56,15 @@ data class ReceiverUiState(
     val outputHardware: com.lasync.audio.core.audio.AudioOutputHardware = com.lasync.audio.core.audio.AudioOutputHardware.SPEAKER,
     val delayTrimMs: Int = 0,
     val remoteVolumePercent: Int = 100,
-    val isMutedByHost: Boolean = false
+    val isMutedByHost: Boolean = false,
+    val isJukeboxDownloading: Boolean = false,
+    val jukeboxDownloadProgress: Float = 0f,
+    val jukeboxTrackTitle: String = "",
+    val isJukeboxReady: Boolean = false,
+    val isJukeboxPlaying: Boolean = false,
+    val jukeboxPositionMs: Long = 0L,
+    val jukeboxDurationMs: Long = 0L,
+    val jukeboxProgress: Float = 0f
 )
 
 class ReceiverNetworkEngine(
@@ -123,6 +131,21 @@ class ReceiverNetworkEngine(
             launch {
                 audioEngine.isMegaphoneActive.collect { isMegaphone ->
                     _uiState.value = _uiState.value.copy(isMegaphoneActive = isMegaphone)
+                }
+            }
+            launch {
+                audioEngine.jukeboxPlaybackEngine.isPlayingState.collect { playing ->
+                    _uiState.value = _uiState.value.copy(isJukeboxPlaying = playing)
+                }
+            }
+            launch {
+                audioEngine.jukeboxPlaybackEngine.playbackPositionMs.collect { pos ->
+                    _uiState.value = _uiState.value.copy(jukeboxPositionMs = pos)
+                }
+            }
+            launch {
+                audioEngine.jukeboxPlaybackEngine.playbackProgress.collect { prog ->
+                    _uiState.value = _uiState.value.copy(jukeboxProgress = prog)
                 }
             }
         }
@@ -280,6 +303,56 @@ class ReceiverNetworkEngine(
             NetworkConstants.TYPE_REMOTE_DISCONNECT -> {
                 stop()
                 _uiState.value = ReceiverUiState(state = ReceiverState.IDLE)
+            }
+
+            NetworkConstants.TYPE_JUKEBOX_PRELOAD_START -> {
+                val hostIp = senderAddress.hostAddress ?: targetHostAddress?.hostAddress
+                if (hostIp != null) {
+                    _uiState.value = _uiState.value.copy(
+                        isJukeboxDownloading = true,
+                        jukeboxDownloadProgress = 0f,
+                        isJukeboxReady = false
+                    )
+                    scope.launch(Dispatchers.IO) {
+                        val track = com.lasync.audio.core.jukebox.JukeboxClientDownloader.downloadTrackFromHost(hostIp) { progress ->
+                            _uiState.value = _uiState.value.copy(jukeboxDownloadProgress = progress)
+                        }
+                        if (track != null) {
+                            audioEngine.setJukeboxTrack(track)
+                            _uiState.value = _uiState.value.copy(
+                                isJukeboxDownloading = false,
+                                isJukeboxReady = true,
+                                jukeboxTrackTitle = track.title,
+                                jukeboxDurationMs = track.durationMs
+                            )
+                            // Notify Host that this receiver is loaded and ready
+                            val readyPacket = ControlPacket(
+                                type = NetworkConstants.TYPE_JUKEBOX_READY,
+                                sessionId = targetSessionId,
+                                sequenceNumber = 0L,
+                                senderId = clientId
+                            )
+                            sendPacket(readyPacket, senderAddress, NetworkConstants.PORT_CONTROL)
+                        } else {
+                            _uiState.value = _uiState.value.copy(
+                                isJukeboxDownloading = false,
+                                isJukeboxReady = false
+                            )
+                        }
+                    }
+                }
+            }
+
+            NetworkConstants.TYPE_JUKEBOX_PLAY -> {
+                audioEngine.playJukebox(packet.t1, packet.t2)
+            }
+
+            NetworkConstants.TYPE_JUKEBOX_PAUSE -> {
+                audioEngine.pauseJukebox()
+            }
+
+            NetworkConstants.TYPE_JUKEBOX_STOP -> {
+                audioEngine.stopJukebox()
             }
         }
     }
@@ -448,7 +521,12 @@ class ReceiverNetworkEngine(
             jitterMs = 0f,
             offsetMs = 0f,
             isSynchronized = false,
-            isAudioPlaying = false
+            isAudioPlaying = false,
+            isJukeboxPlaying = false,
+            isJukeboxReady = false,
+            isJukeboxDownloading = false,
+            jukeboxProgress = 0f,
+            jukeboxPositionMs = 0L
         )
     }
 
