@@ -21,13 +21,15 @@ data class AudioFramePacket(
     val sequenceNumber: Long,
     val presentationTimestampNanos: Long,
     val payload: ByteArray,
-    val bufferMode: Byte = SyncBufferMode.ULTRA_STABLE_MUSIC.id
+    val bufferMode: Byte = SyncBufferMode.ULTRA_STABLE_MUSIC.id,
+    val packetType: Byte = PACKET_TYPE_AUDIO_FRAME
 ) {
     companion object {
         const val MAGIC: Short = 0x4C53
         const val VERSION_V1: Byte = 1
         const val VERSION_V2: Byte = 2
         const val PACKET_TYPE_AUDIO_FRAME: Byte = 0x05
+        const val PACKET_TYPE_MEGAPHONE: Byte = 0x06
         const val HEADER_SIZE_V1 = 30
         const val HEADER_SIZE_V2 = 31
         const val HEADER_SIZE = HEADER_SIZE_V2
@@ -43,7 +45,7 @@ data class AudioFramePacket(
             if (version != VERSION_V1 && version != VERSION_V2) return null
 
             val type = buffer.get()
-            if (type != PACKET_TYPE_AUDIO_FRAME) return null
+            if (type != PACKET_TYPE_AUDIO_FRAME && type != PACKET_TYPE_MEGAPHONE) return null
 
             val sessionBytes = ByteArray(6)
             buffer.get(sessionBytes)
@@ -69,7 +71,8 @@ data class AudioFramePacket(
                 sequenceNumber = sequenceNumber,
                 presentationTimestampNanos = presentationTimestampNanos,
                 payload = payload,
-                bufferMode = bufferMode
+                bufferMode = bufferMode,
+                packetType = type
             )
         }
     }
@@ -80,7 +83,7 @@ data class AudioFramePacket(
 
         buffer.putShort(MAGIC)
         buffer.put(VERSION_V2)
-        buffer.put(PACKET_TYPE_AUDIO_FRAME)
+        buffer.put(packetType)
 
         val sessionBytes = ByteArray(6) { 0x20 } // default space
         val rawSession = sessionId.toByteArray(Charsets.US_ASCII)
@@ -104,6 +107,7 @@ data class AudioFramePacket(
                presentationTimestampNanos == other.presentationTimestampNanos &&
                sessionId == other.sessionId &&
                bufferMode == other.bufferMode &&
+               packetType == other.packetType &&
                payload.contentEquals(other.payload)
     }
 
@@ -112,6 +116,7 @@ data class AudioFramePacket(
         result = 31 * result + sequenceNumber.hashCode()
         result = 31 * result + presentationTimestampNanos.hashCode()
         result = 31 * result + bufferMode.hashCode()
+        result = 31 * result + packetType.hashCode()
         result = 31 * result + payload.contentHashCode()
         return result
     }

@@ -51,11 +51,13 @@ data class ReceiverUiState(
     val hardwareLatencyMs: Float = 0f,
     val phaseErrorMs: Float = 0f,
     val isPhaseLocked: Boolean = false,
-    val isHardwareTimestampSupported: Boolean = false
+    val isHardwareTimestampSupported: Boolean = false,
+    val isMegaphoneActive: Boolean = false
 )
 
 class ReceiverNetworkEngine(
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val context: android.content.Context? = null
 ) {
     private var socket: DatagramSocket? = null
     private var receiveJob: Job? = null
@@ -64,7 +66,7 @@ class ReceiverNetworkEngine(
     private var pruneDiscoveryJob: Job? = null
 
     val clockSyncEngine = ClockSyncEngine(windowSize = 12)
-    val audioEngine = com.lasync.audio.core.audio.ReceiverAudioEngine(scope, clockSyncEngine)
+    val audioEngine = com.lasync.audio.core.audio.ReceiverAudioEngine(scope, clockSyncEngine, context)
     private val discoveredHostsMap = mutableMapOf<String, DiscoveredHost>()
 
     private val clientId = UUID.randomUUID().toString().take(8).uppercase()
@@ -112,6 +114,11 @@ class ReceiverNetworkEngine(
             launch {
                 audioEngine.isHardwareTimestampSupported.collect { supported ->
                     _uiState.value = _uiState.value.copy(isHardwareTimestampSupported = supported)
+                }
+            }
+            launch {
+                audioEngine.isMegaphoneActive.collect { isMegaphone ->
+                    _uiState.value = _uiState.value.copy(isMegaphoneActive = isMegaphone)
                 }
             }
         }
@@ -236,6 +243,16 @@ class ReceiverNetworkEngine(
                         isSynchronized = rtt > 0f && rtt < 25f
                     )
                 }
+            }
+
+            NetworkConstants.TYPE_MEGAPHONE_START -> {
+                audioEngine.onMegaphoneStarted()
+                _uiState.value = _uiState.value.copy(isMegaphoneActive = true)
+            }
+
+            NetworkConstants.TYPE_MEGAPHONE_STOP -> {
+                audioEngine.onMegaphoneStopped()
+                _uiState.value = _uiState.value.copy(isMegaphoneActive = false)
             }
         }
     }

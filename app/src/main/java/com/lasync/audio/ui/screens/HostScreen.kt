@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.VolumeUp
@@ -37,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +58,7 @@ import com.lasync.audio.ui.theme.CarbonCardHighlight
 import com.lasync.audio.ui.theme.CrimsonPulse
 import com.lasync.audio.ui.theme.HyperCyan
 import com.lasync.audio.ui.theme.QuantumMint
+import com.lasync.audio.ui.theme.SolarAmber
 import com.lasync.audio.ui.theme.TextMuted
 import com.lasync.audio.ui.theme.TextPrimary
 import com.lasync.audio.ui.theme.TextSecondary
@@ -77,12 +81,15 @@ fun HostScreen(
             .background(VoidBackground)
             .padding(20.dp)
     ) {
-        // Uniform Brand Top Bar
+        // Uniform Brand Top Bar with Stealth Megaphone Push-to-Talk on Logo
         LaSyncTopBar(
             title = "LaSync",
             subtitle = "Master Host • ${state.sessionId}",
             tag = "HOST",
-            onCloseClick = onStopSession
+            onCloseClick = onStopSession,
+            onLogoPressStart = { engine.startMegaphone(context) },
+            onLogoPressEnd = { engine.stopMegaphone() },
+            isMegaphoneActive = state.isMegaphoneActive
         )
 
         Spacer(modifier = Modifier.height(18.dp))
@@ -349,6 +356,8 @@ fun HostScreen(
                 .border(
                     1.dp,
                     when (state.activeAudioSource) {
+                        com.lasync.audio.core.audio.HostAudioSource.MEGAPHONE ->
+                            Brush.linearGradient(listOf(CrimsonPulse, SolarAmber))
                         com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE ->
                             Brush.linearGradient(listOf(QuantumMint, HyperCyan))
                         com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE ->
@@ -365,6 +374,52 @@ fun HostScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 when (state.activeAudioSource) {
+                    com.lasync.audio.core.audio.HostAudioSource.MEGAPHONE -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                LaSyncWaveEqualizer(tint = CrimsonPulse, maxHeight = 18.dp)
+                                Column {
+                                    Text(
+                                        text = "GHOST MEGAPHONE ACTIVE",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = CrimsonPulse
+                                    )
+                                    Text(
+                                        text = "Broadcasting live microphone @ 100% volume",
+                                        fontSize = 9.sp,
+                                        color = TextMuted
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = "${state.audioFramesSent} frames",
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = TextMuted
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        LaSyncButton(
+                            text = "STOP MEGAPHONE",
+                            icon = Icons.Default.Stop,
+                            accentColor = CrimsonPulse,
+                            onClick = { engine.stopMegaphone() },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
                     com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE -> {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -488,6 +543,145 @@ fun HostScreen(
                             onClick = { engine.startToneTest() },
                             modifier = Modifier.fillMaxWidth()
                         )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Ghost Megaphone (Stealth 1-Way Walkie-Talkie / Room PA)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (state.isMegaphoneActive) CrimsonPulse.copy(alpha = 0.15f) else CarbonCard)
+                .border(
+                    1.dp,
+                    if (state.isMegaphoneActive) CrimsonPulse else CrimsonPulse.copy(alpha = 0.35f),
+                    RoundedCornerShape(16.dp)
+                )
+                .padding(12.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = "Megaphone",
+                            tint = CrimsonPulse,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "GHOST MEGAPHONE • 1-WAY PA",
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = CrimsonPulse,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    if (state.isMegaphoneActive) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            LaSyncWaveEqualizer(tint = CrimsonPulse, maxHeight = 12.dp)
+                            Text(
+                                text = "LIVE @ 100% VOL",
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                color = CrimsonPulse
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "STEALTH PTT",
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = TextMuted
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Push-to-Talk Interactive Trigger Button
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (state.isMegaphoneActive) CrimsonPulse.copy(alpha = 0.3f)
+                            else CarbonCardHighlight
+                        )
+                        .border(
+                            1.dp,
+                            if (state.isMegaphoneActive) CrimsonPulse else BorderNeon,
+                            RoundedCornerShape(12.dp)
+                        )
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onPress = {
+                                    engine.startMegaphone(context)
+                                    tryAwaitRelease()
+                                    engine.stopMegaphone()
+                                }
+                            )
+                        }
+                        .padding(vertical = 12.dp, horizontal = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (state.isMegaphoneActive) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            LaSyncWaveEqualizer(tint = CrimsonPulse, maxHeight = 18.dp)
+                            Text(
+                                text = "TRANSMITTING LIVE TO ALL PHONES",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace,
+                                color = CrimsonPulse
+                            )
+                            LaSyncWaveEqualizer(tint = CrimsonPulse, maxHeight = 18.dp)
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Mic,
+                                    contentDescription = "Hold to talk",
+                                    tint = CrimsonPulse,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = "HOLD TO TALK (PUSH-TO-TALK)",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Or hold glowing logo above • Forces 100% volume on all phones",
+                                fontSize = 9.sp,
+                                color = TextMuted
+                            )
+                        }
                     }
                 }
             }

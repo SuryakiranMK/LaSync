@@ -24,7 +24,8 @@ data class QueuedAudioFrame(
     val payload: ByteArray,
     val presentationTimestampNanos: Long,
     val sequenceNumber: Long,
-    val bufferMode: Byte
+    val bufferMode: Byte,
+    val isMegaphone: Boolean = false
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -33,6 +34,7 @@ data class QueuedAudioFrame(
         return sequenceNumber == other.sequenceNumber &&
                presentationTimestampNanos == other.presentationTimestampNanos &&
                bufferMode == other.bufferMode &&
+               isMegaphone == other.isMegaphone &&
                payload.contentEquals(other.payload)
     }
 
@@ -40,6 +42,7 @@ data class QueuedAudioFrame(
         var result = sequenceNumber.hashCode()
         result = 31 * result + presentationTimestampNanos.hashCode()
         result = 31 * result + bufferMode.hashCode()
+        result = 31 * result + isMegaphone.hashCode()
         result = 31 * result + payload.contentHashCode()
         return result
     }
@@ -52,10 +55,13 @@ data class QueuedAudioFrame(
  * 2. Hardware Presentation Timestamps: Uses AudioTrack.getTimestamp() to measure the exact
  *    physical moment sound vibrates the speaker DAC, calculating real-time phase alignment.
  * 3. Thread-safe concurrent jitter queue with guaranteed full-frame WRITE_BLOCKING.
+ * 4. GhostMegaphone Emergency PA: Overrides receiver volume to 100% and bypasses jitter queue for
+ *    instant live voice playback across the room.
  */
 class ReceiverAudioEngine(
     private val scope: CoroutineScope,
-    private val clockSyncEngine: ClockSyncEngine
+    private val clockSyncEngine: ClockSyncEngine,
+    private val context: android.content.Context? = null
 ) {
     companion object {
         private const val TAG = "ReceiverAudioEngine"
@@ -83,6 +89,14 @@ class ReceiverAudioEngine(
     private val _isHardwareTimestampSupported = MutableStateFlow(false)
     val isHardwareTimestampSupported: StateFlow<Boolean> = _isHardwareTimestampSupported.asStateFlow()
 
+    private val _isMegaphoneActive = MutableStateFlow(false)
+    val isMegaphoneActive: StateFlow<Boolean> = _isMegaphoneActive.asStateFlow()
+
+    private val volumeOverrideManager = context?.let { VolumeOverrideManager(it) }
+
+    @Volatile
+    private var lastMegaphonePacketTimeNs = 0L
+
     private var socketJob: Job? = null
     private var playerJob: Job? = null
     private var udpSocket: DatagramSocket? = null
@@ -92,6 +106,25 @@ class ReceiverAudioEngine(
 
     @Volatile
     private var lastPacketTimeNs = 0L
+
+    fun onMegaphoneStarted() {
+        if (!_isMegaphoneActive.value) {
+            _isMegaphoneActive.value = true
+            volumeOverrideManager?.overrideToMaxVolume()
+            // Flush old jitter frames so megaphone broadcast is immediate
+            jitterQueue.clear()
+            try {
+                audioTrack?.flush()
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun onMegaphoneStopped() {
+        if (_isMegaphoneActive.value) {
+            _isMegaphoneActive.value = false
+            volumeOverrideManager?.restoreOriginalVolume()
+        }
+    }
 
     fun startListening() {
         if (socketJob != null) return
@@ -110,6 +143,8 @@ class ReceiverAudioEngine(
     }
 
     fun stopListening() {
+        onMegaphoneStopped()
+
         socketJob?.cancel()
         socketJob = null
         playerJob?.cancel()
@@ -144,6 +179,14 @@ class ReceiverAudioEngine(
                     lastPacketTimeNs = SystemClock.elapsedRealtimeNanos()
                     _framesReceived.value++
 
+                    val isMegaphone = (audioPacket.packetType == AudioFramePacket.PACKET_TYPE_MEGAPHONE)
+                    if (isMegaphone) {
+                        lastMegaphonePacketTimeNs = lastPacketTimeNs
+                        if (!_isMegaphoneActive.value) {
+                            onMegaphoneStarted()
+                        }
+                    }
+
                     val mode = SyncBufferMode.fromId(audioPacket.bufferMode)
                     if (_activeBufferMode.value != mode) {
                         _activeBufferMode.value = mode
@@ -154,7 +197,8 @@ class ReceiverAudioEngine(
                             payload = audioPacket.payload,
                             presentationTimestampNanos = audioPacket.presentationTimestampNanos,
                             sequenceNumber = audioPacket.sequenceNumber,
-                            bufferMode = audioPacket.bufferMode
+                            bufferMode = audioPacket.bufferMode,
+                            isMegaphone = isMegaphone
                         )
                     )
                 }
@@ -181,9 +225,14 @@ class ReceiverAudioEngine(
             val timeSinceLastPacketMs = if (lastPacketTimeNs > 0) (now - lastPacketTimeNs) / 1_000_000L else 0L
             val requiredBufferFrames = _activeBufferMode.value.bufferFrames
 
+            // Auto-timeout for Megaphone broadcast if no packets arrived for 2.5s
+            if (_isMegaphoneActive.value && (now - lastMegaphonePacketTimeNs > 2_500_000_000L)) {
+                onMegaphoneStopped()
+            }
+
             if (!isPlayingStarted) {
-                // Wait for the jitter buffer to fill with the target frames (e.g. 100 frames for Music, 15 for Video)
-                if (jitterQueue.size >= requiredBufferFrames) {
+                // For live Megaphone voice, play immediately with zero jitter delay
+                if (_isMegaphoneActive.value || jitterQueue.size >= requiredBufferFrames) {
                     audioTrack?.play()
                     isPlayingStarted = true
                     _isAudioPlaying.value = true

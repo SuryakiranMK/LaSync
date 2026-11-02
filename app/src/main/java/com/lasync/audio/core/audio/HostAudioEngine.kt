@@ -25,7 +25,8 @@ import java.net.InetAddress
 enum class HostAudioSource {
     IDLE,
     SYNTHETIC_TONE,
-    SYSTEM_CAPTURE
+    SYSTEM_CAPTURE,
+    MEGAPHONE
 }
 
 /**
@@ -55,6 +56,9 @@ class HostAudioEngine(
     private val _bufferMode = MutableStateFlow(SyncBufferMode.ULTRA_STABLE_MUSIC)
     val bufferMode: StateFlow<SyncBufferMode> = _bufferMode.asStateFlow()
 
+    private val _isMegaphoneActive = MutableStateFlow(false)
+    val isMegaphoneActive: StateFlow<Boolean> = _isMegaphoneActive.asStateFlow()
+
     private var audioJob: Job? = null
     private var udpSocket: DatagramSocket? = null
     private var localAudioTrack: AudioTrack? = null
@@ -62,6 +66,10 @@ class HostAudioEngine(
 
     private var playbackCaptureEngine: AudioPlaybackCaptureEngine? = null
     private var captureSequenceNumber = 0L
+
+    private var megaphoneCaptureEngine: MegaphoneCaptureEngine? = null
+    private var previousSourceBeforeMegaphone = HostAudioSource.IDLE
+    private var megaphoneSequenceNumber = 0L
 
     fun setBufferMode(mode: SyncBufferMode) {
         _bufferMode.value = mode
@@ -105,6 +113,10 @@ class HostAudioEngine(
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             playbackCaptureEngine = AudioPlaybackCaptureEngine(scope) { pcmFrame ->
+                if (_isMegaphoneActive.value) {
+                    // Duck system audio while Megaphone / Walkie-Talkie is broadcasting
+                    return@AudioPlaybackCaptureEngine
+                }
                 val mode = _bufferMode.value
                 val timestamp = SystemClock.elapsedRealtimeNanos() + mode.leadTimeNs
                 val packet = AudioFramePacket(
@@ -121,8 +133,70 @@ class HostAudioEngine(
         }
     }
 
+    fun startMegaphone(context: Context): Boolean {
+        if (_isMegaphoneActive.value) return true
+
+        if (udpSocket == null || udpSocket?.isClosed == true) {
+            try {
+                udpSocket = DatagramSocket().apply {
+                    broadcast = true
+                    sendBufferSize = 256 * 1024
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error opening UDP socket for megaphone: ${e.message}", e)
+                return false
+            }
+        }
+
+        previousSourceBeforeMegaphone = _activeSource.value
+        _activeSource.value = HostAudioSource.MEGAPHONE
+        _isMegaphoneActive.value = true
+        _isStreaming.value = true
+        megaphoneSequenceNumber = 0L
+
+        val engine = MegaphoneCaptureEngine(context, scope)
+        val started = engine.start { pcmFrame ->
+            val now = SystemClock.elapsedRealtimeNanos()
+            // 20ms lead time for immediate live walkie-talkie responsiveness
+            val presentationTimestamp = now + 20_000_000L
+            val packet = AudioFramePacket(
+                sessionId = getSessionId(),
+                sequenceNumber = megaphoneSequenceNumber++,
+                presentationTimestampNanos = presentationTimestamp,
+                payload = pcmFrame,
+                bufferMode = _bufferMode.value.id,
+                packetType = AudioFramePacket.PACKET_TYPE_MEGAPHONE
+            )
+            sendAudioPacket(packet)
+            _framesSent.value = megaphoneSequenceNumber
+        }
+
+        if (!started) {
+            _isMegaphoneActive.value = false
+            _activeSource.value = previousSourceBeforeMegaphone
+            _isStreaming.value = (previousSourceBeforeMegaphone != HostAudioSource.IDLE)
+            return false
+        }
+
+        megaphoneCaptureEngine = engine
+        return true
+    }
+
+    fun stopMegaphone() {
+        if (!_isMegaphoneActive.value) return
+        _isMegaphoneActive.value = false
+        megaphoneCaptureEngine?.stop()
+        megaphoneCaptureEngine = null
+
+        _activeSource.value = previousSourceBeforeMegaphone
+        if (_activeSource.value == HostAudioSource.IDLE) {
+            cleanupResources()
+            _isStreaming.value = false
+        }
+    }
+
     fun stopSystemAudio() {
-        if (_activeSource.value != HostAudioSource.SYSTEM_CAPTURE) return
+        if (_activeSource.value != HostAudioSource.SYSTEM_CAPTURE && previousSourceBeforeMegaphone != HostAudioSource.SYSTEM_CAPTURE) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             playbackCaptureEngine?.stopCapture()
             playbackCaptureEngine = null
@@ -130,12 +204,15 @@ class HostAudioEngine(
         cleanupResources()
         _isStreaming.value = false
         _activeSource.value = HostAudioSource.IDLE
+        previousSourceBeforeMegaphone = HostAudioSource.IDLE
     }
 
     fun stopAll() {
+        stopMegaphone()
         when (_activeSource.value) {
             HostAudioSource.SYNTHETIC_TONE -> stopTone()
             HostAudioSource.SYSTEM_CAPTURE -> stopSystemAudio()
+            HostAudioSource.MEGAPHONE -> stopMegaphone()
             HostAudioSource.IDLE -> cleanupResources()
         }
     }
@@ -159,6 +236,11 @@ class HostAudioEngine(
                 val now = SystemClock.elapsedRealtimeNanos()
 
                 if (now >= nextFrameTime) {
+                    if (_isMegaphoneActive.value) {
+                        // Duck synthetic tone while Megaphone is active
+                        nextFrameTime += frameIntervalNs
+                        continue
+                    }
                     val mode = _bufferMode.value
                     val presentationTimestamp = nextFrameTime + mode.leadTimeNs
                     val pcmData = toneGenerator.generateFrame(AudioConstants.SAMPLES_PER_FRAME)

@@ -80,10 +80,69 @@ fun ReceiverScreen(
             title = "LaSync",
             subtitle = if (state.state == ReceiverState.CONNECTED) "Connected • ${state.sessionId}" else "Searching LAN",
             tag = "LISTENER",
-            onCloseClick = onLeave
+            onCloseClick = onLeave,
+            isMegaphoneActive = state.isMegaphoneActive
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        AnimatedVisibility(
+            visible = state.isMegaphoneActive,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Column {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(CrimsonPulse.copy(alpha = 0.2f))
+                        .border(1.5.dp, CrimsonPulse, RoundedCornerShape(16.dp))
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(CrimsonPulse.copy(alpha = 0.3f))
+                                .border(1.dp, CrimsonPulse, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Sensors,
+                                contentDescription = "Emergency PA",
+                                tint = CrimsonPulse,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "🚨 HOST EMERGENCY ANNOUNCEMENT",
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Black,
+                                color = CrimsonPulse,
+                                letterSpacing = 0.5.sp
+                            )
+                            Text(
+                                text = "Live microphone broadcast • Volume forced to 100%",
+                                fontSize = 11.sp,
+                                color = TextPrimary
+                            )
+                        }
+
+                        LaSyncWaveEqualizer(tint = CrimsonPulse, maxHeight = 16.dp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+        }
 
         when (state.state) {
             ReceiverState.IDLE, ReceiverState.DISCOVERING, ReceiverState.CONNECTING -> {

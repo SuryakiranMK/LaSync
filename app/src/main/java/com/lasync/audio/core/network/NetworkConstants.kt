@@ -1,4 +1,4 @@
-﻿package com.lasync.audio.core.network
+package com.lasync.audio.core.network
 
 object NetworkConstants {
     const val MAGIC_CONTROL: Short = 0x4C53 // ASCII "LS"
@@ -14,6 +14,8 @@ object NetworkConstants {
     const val TYPE_PONG: Byte = 5
     const val TYPE_HEARTBEAT: Byte = 6
     const val TYPE_LEAVE: Byte = 7
+    const val TYPE_MEGAPHONE_START: Byte = 0x10
+    const val TYPE_MEGAPHONE_STOP: Byte = 0x11
 
     const val BEACON_INTERVAL_MS = 1000L
     const val PING_INTERVAL_FAST_MS = 200L

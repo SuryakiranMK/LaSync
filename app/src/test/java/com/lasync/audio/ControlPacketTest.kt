@@ -1,4 +1,4 @@
-﻿package com.lasync.audio
+package com.lasync.audio
 
 import com.lasync.audio.core.network.ControlPacket
 import com.lasync.audio.core.network.NetworkConstants
@@ -68,5 +68,32 @@ class ControlPacketTest {
         // Truncate to less than minimum header size
         val result = ControlPacket.fromByteArray(bytes, 15)
         assertNull(result)
+    }
+
+    @Test
+    fun testMegaphoneControlPacketsRoundtrip() {
+        val startPacket = ControlPacket(
+            type = NetworkConstants.TYPE_MEGAPHONE_START,
+            sessionId = "HOST99",
+            sequenceNumber = 1L,
+            senderId = "HOST"
+        )
+        val startBytes = startPacket.toByteArray()
+        val decodedStart = ControlPacket.fromByteArray(startBytes, startBytes.size)
+        assertNotNull(decodedStart)
+        assertEquals(NetworkConstants.TYPE_MEGAPHONE_START, decodedStart!!.type)
+        assertEquals("HOST99", decodedStart.sessionId)
+
+        val stopPacket = ControlPacket(
+            type = NetworkConstants.TYPE_MEGAPHONE_STOP,
+            sessionId = "HOST99",
+            sequenceNumber = 2L,
+            senderId = "HOST"
+        )
+        val stopBytes = stopPacket.toByteArray()
+        val decodedStop = ControlPacket.fromByteArray(stopBytes, stopBytes.size)
+        assertNotNull(decodedStop)
+        assertEquals(NetworkConstants.TYPE_MEGAPHONE_STOP, decodedStop!!.type)
+        assertEquals("HOST99", decodedStop.sessionId)
     }
 }

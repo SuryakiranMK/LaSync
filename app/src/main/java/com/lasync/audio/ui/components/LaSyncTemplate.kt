@@ -11,8 +11,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -79,8 +81,18 @@ fun LaSyncTopBar(
     subtitle: String,
     tag: String? = null,
     onCloseClick: (() -> Unit)? = null,
+    onLogoPressStart: (() -> Unit)? = null,
+    onLogoPressEnd: (() -> Unit)? = null,
+    isMegaphoneActive: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val logoBorderBrush = if (isMegaphoneActive) {
+        Brush.linearGradient(listOf(CrimsonPulse, SolarAmber))
+    } else {
+        Brush.linearGradient(listOf(HyperCyan, Ultraviolet))
+    }
+    val logoBg = if (isMegaphoneActive) CrimsonPulse.copy(alpha = 0.25f) else CarbonCard
+
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -90,13 +102,28 @@ fun LaSyncTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // App Logo with glowing squircle aura
+            // App Logo with glowing squircle aura and Push-to-Talk touch gesture
             Box(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(CarbonCard)
-                    .border(1.5.dp, Brush.linearGradient(listOf(HyperCyan, Ultraviolet)), RoundedCornerShape(12.dp)),
+                    .background(logoBg)
+                    .border(if (isMegaphoneActive) 2.dp else 1.5.dp, logoBorderBrush, RoundedCornerShape(12.dp))
+                    .then(
+                        if (onLogoPressStart != null && onLogoPressEnd != null) {
+                            Modifier.pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = {
+                                        onLogoPressStart()
+                                        tryAwaitRelease()
+                                        onLogoPressEnd()
+                                    }
+                                )
+                            }
+                        } else {
+                            Modifier
+                        }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -120,31 +147,34 @@ fun LaSyncTopBar(
                         color = TextPrimary
                     )
 
-                    if (tag != null) {
+                    val displayTag = if (isMegaphoneActive) "🎙️ MEGAPHONE" else tag
+                    if (displayTag != null) {
+                        val tagColor = if (isMegaphoneActive) CrimsonPulse else HyperCyan
+                        val tagBg = if (isMegaphoneActive) CrimsonPulse.copy(alpha = 0.2f) else HyperCyanGlow
                         Box(
                             modifier = Modifier
-                                .background(HyperCyanGlow, RoundedCornerShape(6.dp))
-                                .border(1.dp, HyperCyan.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                .background(tagBg, RoundedCornerShape(6.dp))
+                                .border(1.dp, tagColor.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
                                 .padding(horizontal = 7.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = tag,
+                                text = displayTag,
                                 fontSize = 10.sp,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
-                                color = HyperCyan
+                                color = tagColor
                             )
                         }
                     }
                 }
 
                 Text(
-                    text = subtitle.uppercase(),
+                    text = if (isMegaphoneActive) "🚨 LIVE MIC • ALL PHONES @ MAX VOL" else subtitle.uppercase(),
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.8.sp,
-                    color = TextMuted
+                    color = if (isMegaphoneActive) CrimsonPulse else TextMuted
                 )
             }
         }

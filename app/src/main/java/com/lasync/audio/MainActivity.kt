@@ -92,7 +92,9 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            launchMediaProjectionPrompt()
+            if (pendingMediaProjectionCallback != null) {
+                launchMediaProjectionPrompt()
+            }
         } else {
             pendingMediaProjectionCallback?.invoke(null)
             pendingMediaProjectionCallback = null
@@ -139,15 +141,17 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             hostEngine.uiState.collect { state ->
                 if (currentScreenState.value == ScreenState.HOST && state.isRunning) {
-                    val title = when (state.activeAudioSource) {
-                        com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE -> "LaSync Master • Sharing Music"
-                        com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE -> "LaSync Master • 440 Hz Tone"
-                        com.lasync.audio.core.audio.HostAudioSource.IDLE -> "LaSync Master Host • ${state.sessionId}"
+                    val title = when {
+                        state.isMegaphoneActive -> "LaSync Master • Ghost Megaphone"
+                        state.activeAudioSource == com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE -> "LaSync Master • Sharing Music"
+                        state.activeAudioSource == com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE -> "LaSync Master • 440 Hz Tone"
+                        else -> "LaSync Master Host • ${state.sessionId}"
                     }
-                    val msg = when (state.activeAudioSource) {
-                        com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE -> "🎵 Streaming System Music [${state.bufferMode.title}] to ${state.receivers.size} phone(s) • ${state.audioFramesSent} frames"
-                        com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE -> "🔊 Synchronized 440 Hz tone [${state.bufferMode.title}] • ${state.audioFramesSent} frames"
-                        com.lasync.audio.core.audio.HostAudioSource.IDLE -> if (state.receivers.isEmpty()) "🟢 Beaconing on LAN • Waiting for listeners" else "🟢 ${state.receivers.size} listener(s) phase-locked"
+                    val msg = when {
+                        state.isMegaphoneActive -> "🎙️ Live Walkie-Talkie broadcast to ${state.receivers.size} phone(s) at MAX volume"
+                        state.activeAudioSource == com.lasync.audio.core.audio.HostAudioSource.SYSTEM_CAPTURE -> "🎵 Streaming System Music [${state.bufferMode.title}] to ${state.receivers.size} phone(s) • ${state.audioFramesSent} frames"
+                        state.activeAudioSource == com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE -> "🔊 Synchronized 440 Hz tone [${state.bufferMode.title}] • ${state.audioFramesSent} frames"
+                        else -> if (state.receivers.isEmpty()) "🟢 Beaconing on LAN • Waiting for listeners" else "🟢 ${state.receivers.size} listener(s) phase-locked"
                     }
                     LaSyncForegroundService.updateNotification(
                         this@MainActivity,
@@ -163,8 +167,12 @@ class MainActivity : ComponentActivity() {
             receiverEngine.uiState.collect { receiverState ->
                 if (currentScreenState.value == ScreenState.RECEIVER && receiverState.state != com.lasync.audio.core.network.ReceiverState.IDLE) {
                     val isConnected = receiverState.state == com.lasync.audio.core.network.ReceiverState.CONNECTED
-                    val title = if (isConnected) "LaSync Receiver • Phase-Locked" else "LaSync Receiver • Discovering"
-                    val msg = if (isConnected) {
+                    val title = if (receiverState.isMegaphoneActive) {
+                        "🚨 LaSync • Host Megaphone PA"
+                    } else if (isConnected) "LaSync Receiver • Phase-Locked" else "LaSync Receiver • Discovering"
+                    val msg = if (receiverState.isMegaphoneActive) {
+                        "🎙️ Host live voice @ 100% volume from ${receiverState.connectedHostName}"
+                    } else if (isConnected) {
                         if (receiverState.isAudioPlaying) {
                             "🎵 Playing Master Stream • ${receiverState.audioFramesReceived} frames • RTT ${receiverState.rttMs.toInt()}ms"
                         } else {
@@ -188,7 +196,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         hostEngine = HostNetworkEngine(lifecycleScope)
-        receiverEngine = ReceiverNetworkEngine(lifecycleScope)
+        receiverEngine = ReceiverNetworkEngine(lifecycleScope, applicationContext)
 
         LaSyncForegroundService.onSessionStopRequested = {
             lifecycleScope.launch(Dispatchers.Main) {
@@ -307,6 +315,13 @@ class MainActivity : ComponentActivity() {
             ) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
+        }
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            audioRecordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 

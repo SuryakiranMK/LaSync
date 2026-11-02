@@ -29,7 +29,8 @@ data class HostUiState(
     val isAudioStreaming: Boolean = false,
     val audioFramesSent: Long = 0L,
     val activeAudioSource: com.lasync.audio.core.audio.HostAudioSource = com.lasync.audio.core.audio.HostAudioSource.IDLE,
-    val bufferMode: com.lasync.audio.core.audio.SyncBufferMode = com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC
+    val bufferMode: com.lasync.audio.core.audio.SyncBufferMode = com.lasync.audio.core.audio.SyncBufferMode.ULTRA_STABLE_MUSIC,
+    val isMegaphoneActive: Boolean = false
 )
 
 class HostNetworkEngine(
@@ -77,7 +78,46 @@ class HostNetworkEngine(
                     _uiState.value = _uiState.value.copy(bufferMode = mode)
                 }
             }
+            launch {
+                audioEngine.isMegaphoneActive.collect { isMegaphone ->
+                    _uiState.value = _uiState.value.copy(isMegaphoneActive = isMegaphone)
+                }
+            }
         }
+    }
+
+    fun startMegaphone(context: android.content.Context): Boolean {
+        val started = audioEngine.startMegaphone(context)
+        if (started) {
+            broadcastControlPacket(NetworkConstants.TYPE_MEGAPHONE_START)
+        }
+        return started
+    }
+
+    fun stopMegaphone() {
+        audioEngine.stopMegaphone()
+        broadcastControlPacket(NetworkConstants.TYPE_MEGAPHONE_STOP)
+    }
+
+    private fun broadcastControlPacket(type: Byte) {
+        val packet = ControlPacket(
+            type = type,
+            sessionId = sessionId,
+            sequenceNumber = 0L,
+            senderId = "HOST"
+        )
+        // Send to all registered receivers
+        for (receiver in receiversMap.values) {
+            try {
+                val addr = InetAddress.getByName(receiver.ipAddress)
+                sendPacket(packet, addr, receiver.port)
+            } catch (_: Exception) {}
+        }
+        // Also broadcast to subnet
+        try {
+            val broadcastAddr = NetworkUtils.getBroadcastAddress()
+            sendPacket(packet, broadcastAddr, NetworkConstants.PORT_CONTROL)
+        } catch (_: Exception) {}
     }
 
     fun setBufferMode(mode: com.lasync.audio.core.audio.SyncBufferMode) {

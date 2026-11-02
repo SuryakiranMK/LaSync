@@ -68,4 +68,26 @@ class AudioFramePacketTest {
         val decoded = AudioFramePacket.decode(invalidMagic, invalidMagic.size)
         assertNull(decoded)
     }
+
+    @Test
+    fun testMegaphonePacketEncodeDecodeRoundtrip() {
+        val micPcm = ByteArray(960) { (it * 3 % 256).toByte() }
+        val megaphonePacket = AudioFramePacket(
+            sessionId = "HOST01",
+            sequenceNumber = 10L,
+            presentationTimestampNanos = 2_000_000_000L,
+            payload = micPcm,
+            bufferMode = SyncBufferMode.ULTRA_STABLE_MUSIC.id,
+            packetType = AudioFramePacket.PACKET_TYPE_MEGAPHONE
+        )
+
+        val encoded = megaphonePacket.encode()
+        val decoded = AudioFramePacket.decode(encoded, encoded.size)
+
+        assertNotNull(decoded)
+        assertEquals("HOST01", decoded!!.sessionId)
+        assertEquals(10L, decoded.sequenceNumber)
+        assertEquals(AudioFramePacket.PACKET_TYPE_MEGAPHONE, decoded.packetType)
+        assertArrayEquals(micPcm, decoded.payload)
+    }
 }
