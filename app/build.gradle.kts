@@ -12,8 +12,8 @@ android {
         applicationId = "com.lasync.audio"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
-        versionName = "1.2.1"
+        versionCode = 16
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
+    implementation("com.google.zxing:core:3.5.3")
 
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation("junit:junit:4.13.2")

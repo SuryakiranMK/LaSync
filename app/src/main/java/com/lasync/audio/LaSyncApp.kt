@@ -30,6 +30,10 @@ class LaSyncApp : Application() {
         ReceiverNetworkEngine(applicationScope, applicationContext)
     }
 
+    val hotspotManager: com.lasync.audio.core.hotspot.AutonomousHotspotManager by lazy {
+        com.lasync.audio.core.hotspot.AutonomousHotspotManager(applicationContext)
+    }
+
     override fun onCreate() {
         super.onCreate()
         instance = this

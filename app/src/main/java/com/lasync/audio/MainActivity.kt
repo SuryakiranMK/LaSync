@@ -215,6 +215,8 @@ class MainActivity : ComponentActivity() {
 
         LaSyncForegroundService.onSessionStopRequested = {
             lifecycleScope.launch(Dispatchers.Main) {
+                (application as LaSyncApp).hotspotManager.stopAutonomousHotspot()
+                hostEngine.setHotspotInfo(null)
                 hostEngine.stopAllAudio()
                 hostEngine.stop()
                 receiverEngine.stop()
@@ -299,6 +301,8 @@ class MainActivity : ComponentActivity() {
                             onEndSession = {
                                 showExitDialog = false
                                 if (currentScreen == ScreenState.HOST) {
+                                    (application as LaSyncApp).hotspotManager.stopAutonomousHotspot()
+                                    hostEngine.setHotspotInfo(null)
                                     hostEngine.stopAllAudio()
                                     hostEngine.stop()
                                 } else {
@@ -345,6 +349,7 @@ class MainActivity : ComponentActivity() {
                             ScreenState.HOST -> {
                                 HostScreen(
                                     engine = hostEngine,
+                                    hotspotManager = (application as LaSyncApp).hotspotManager,
                                     onRequestMediaProjection = { callback ->
                                         requestMediaProjection(callback)
                                     },

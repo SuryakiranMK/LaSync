@@ -78,3 +78,4 @@ class LaSyncAudioFocusManager(
         hasFocus = false
     }
 }
+

@@ -1,6 +1,10 @@
 package com.lasync.audio.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.media.projection.MediaProjection
+import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -34,7 +38,9 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Slider
@@ -43,11 +49,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import android.widget.Toast
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -60,8 +68,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
+import com.lasync.audio.core.hotspot.AutonomousHotspotManager
 import com.lasync.audio.core.network.HostNetworkEngine
+import com.lasync.audio.ui.components.HotspotQrDialog
 import com.lasync.audio.ui.components.LaSyncButton
 import com.lasync.audio.ui.components.LaSyncRadar
 import com.lasync.audio.ui.components.LaSyncTopBar
@@ -83,6 +94,7 @@ import com.lasync.audio.ui.theme.VoidBackground
 @Composable
 fun HostScreen(
     engine: HostNetworkEngine,
+    hotspotManager: AutonomousHotspotManager? = null,
     onRequestMediaProjection: ((MediaProjection?) -> Unit) -> Unit,
     onStopSession: () -> Unit,
     onBack: () -> Unit = onStopSession,
@@ -93,6 +105,66 @@ fun HostScreen(
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val state by engine.uiState.collectAsState()
+    var showQrDialog by remember { mutableStateOf(false) }
+
+    val hotspotPermissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.all { it } ||
+                permissions[Manifest.permission.NEARBY_WIFI_DEVICES] == true ||
+                permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        if (granted) {
+            hotspotManager?.startAutonomousHotspot(
+                onStarted = { info ->
+                    engine.setHotspotInfo(info)
+                    showQrDialog = true
+                },
+                onError = { err ->
+                    Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                }
+            )
+        } else {
+            Toast.makeText(context, "Location or Nearby Wi-Fi permission required for Autonomous Hotspot", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun launchAutonomousHotspot() {
+        val needed = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+            }
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            needed.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+
+        if (needed.isEmpty()) {
+            hotspotManager?.startAutonomousHotspot(
+                onStarted = { info ->
+                    engine.setHotspotInfo(info)
+                    showQrDialog = true
+                },
+                onError = { err ->
+                    Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                }
+            )
+        } else {
+            hotspotPermissionsLauncher.launch(needed.toTypedArray())
+        }
+    }
+
+    if (showQrDialog && state.hotspotInfo != null) {
+        HotspotQrDialog(
+            hotspotInfo = state.hotspotInfo!!,
+            onStopHotspot = {
+                hotspotManager?.stopAutonomousHotspot()
+                engine.setHotspotInfo(null)
+                showQrDialog = false
+            },
+            onDismiss = { showQrDialog = false }
+        )
+    }
 
     val jukeboxPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -179,7 +251,199 @@ fun HostScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(22.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Autonomous Hotspot Card (Zero-Router Party Hub & QR Connect)
+        if (state.isHotspotActive && state.hotspotInfo != null) {
+            val info = state.hotspotInfo!!
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(SolarAmber.copy(alpha = 0.12f))
+                    .border(1.5.dp, SolarAmber, RoundedCornerShape(14.dp))
+                    .padding(12.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            LaSyncWaveEqualizer(tint = SolarAmber, maxHeight = 14.dp)
+                            Text(
+                                text = "AUTONOMOUS HOTSPOT ACTIVE",
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                color = SolarAmber,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(SolarAmber.copy(alpha = 0.2f))
+                                .border(1.dp, SolarAmber.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "ZERO-ROUTER",
+                                fontSize = 9.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                color = SolarAmber
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "SSID: ${info.ssid}",
+                                fontSize = 12.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = if (info.passphrase.isNotBlank()) "Pass: ${info.passphrase}" else "Open Network (No Pass)",
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = TextSecondary
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(SolarAmber)
+                                    .clickable { showQrDialog = true }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.QrCode,
+                                        contentDescription = null,
+                                        tint = VoidBackground,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "QR CODE",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VoidBackground
+                                    )
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(CrimsonPulse.copy(alpha = 0.2f))
+                                    .border(1.dp, CrimsonPulse.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        hotspotManager?.stopAutonomousHotspot()
+                                        engine.setHotspotInfo(null)
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "STOP",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CrimsonPulse
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CarbonCard)
+                    .border(1.dp, SolarAmber.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                    .clickable { launchAutonomousHotspot() }
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                            .background(SolarAmber.copy(alpha = 0.15f))
+                            .border(1.dp, SolarAmber.copy(alpha = 0.3f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Wifi,
+                                contentDescription = null,
+                                tint = SolarAmber,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "NO ROUTER? START AUTONOMOUS HOTSPOT",
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                color = SolarAmber,
+                                letterSpacing = 0.5.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Zero-router sync for outdoors & camping • QR connect",
+                                fontSize = 10.sp,
+                                color = TextMuted,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SolarAmber)
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "START",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = VoidBackground
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
 
         // Listeners Header
         Row(

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -304,6 +305,67 @@ fun ReceiverScreen(
                                         )
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Autonomous Hotspot 1-Tap Quick Join Preset
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(SolarAmber.copy(alpha = 0.10f))
+                            .border(1.dp, SolarAmber.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
+                            .clickable {
+                                focusManager.clearFocus()
+                                engine.joinBySessionId("HOST", "192.168.43.1")
+                            }
+                            .padding(horizontal = 14.dp, vertical = 11.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Wifi,
+                                    contentDescription = null,
+                                    tint = SolarAmber,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = "ON HOST HOTSPOT? 1-TAP JOIN",
+                                        fontSize = 11.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SolarAmber
+                                    )
+                                    Text(
+                                        text = "Quick Connect: 192.168.43.1:8888",
+                                        fontSize = 10.sp,
+                                        color = TextMuted
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(SolarAmber)
+                                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                            ) {
+                                Text(
+                                    text = "CONNECT",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = VoidBackground
+                                )
                             }
                         }
                     }

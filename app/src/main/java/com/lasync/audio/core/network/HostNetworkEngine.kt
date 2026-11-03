@@ -37,7 +37,9 @@ data class HostUiState(
     val isJukeboxPlaying: Boolean = false,
     val jukeboxPositionMs: Long = 0L,
     val jukeboxProgress: Float = 0f,
-    val readyReceiversCount: Int = 0
+    val readyReceiversCount: Int = 0,
+    val isHotspotActive: Boolean = false,
+    val hotspotInfo: com.lasync.audio.core.hotspot.HotspotInfo? = null
 )
 
 class HostNetworkEngine(
@@ -121,6 +123,14 @@ class HostNetworkEngine(
                 }
             }
         }
+    }
+
+    fun setHotspotInfo(info: com.lasync.audio.core.hotspot.HotspotInfo?) {
+        _uiState.value = _uiState.value.copy(
+            isHotspotActive = info != null,
+            hotspotInfo = info,
+            localIp = info?.hostIp ?: NetworkUtils.getLocalIpAddress() ?: _uiState.value.localIp
+        )
     }
 
     fun startMegaphone(context: android.content.Context): Boolean {
