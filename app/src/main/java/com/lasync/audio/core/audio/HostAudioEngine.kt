@@ -89,7 +89,7 @@ class HostAudioEngine(
     }
 
     fun startTone() {
-        if (_isStreaming.value) return
+        stopAll()
         _isStreaming.value = true
         _activeSource.value = HostAudioSource.SYNTHETIC_TONE
         _framesSent.value = 0L
@@ -109,7 +109,7 @@ class HostAudioEngine(
     }
 
     fun startSystemAudio(mediaProjection: MediaProjection) {
-        if (_isStreaming.value) return
+        stopAll()
         _isStreaming.value = true
         _activeSource.value = HostAudioSource.SYSTEM_CAPTURE
         _framesSent.value = 0L

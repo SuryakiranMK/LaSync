@@ -13,3 +13,4 @@ enum class HotspotState {
     ACTIVE,
     ERROR
 }
+

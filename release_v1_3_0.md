@@ -29,3 +29,4 @@
 ### 📦 Installation & Verification
 * Download `LaSync.apk` directly from this release, or update inside the app via the In-App GitHub Auto-Updater (`v1.1.2+`).
 * Tested & verified on Android 8.0 through Android 15.
+

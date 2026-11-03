@@ -138,3 +138,4 @@ class AutonomousHotspotManager(
         _hotspotState.value = HotspotState.IDLE
     }
 }
+

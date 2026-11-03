@@ -177,10 +177,18 @@ class HostNetworkEngine(
 
     fun startToneTest() {
         audioEngine.startTone()
+        _uiState.value = _uiState.value.copy(
+            isAudioStreaming = true,
+            activeAudioSource = com.lasync.audio.core.audio.HostAudioSource.SYNTHETIC_TONE
+        )
     }
 
     fun stopToneTest() {
         audioEngine.stopTone()
+        _uiState.value = _uiState.value.copy(
+            isAudioStreaming = false,
+            activeAudioSource = com.lasync.audio.core.audio.HostAudioSource.IDLE
+        )
         broadcastControlPacket(NetworkConstants.TYPE_AUDIO_STOP)
     }
 
