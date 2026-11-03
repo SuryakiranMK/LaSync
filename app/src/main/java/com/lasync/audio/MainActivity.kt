@@ -10,6 +10,7 @@ import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -19,8 +20,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +38,7 @@ import com.lasync.audio.core.network.ReceiverState
 import com.lasync.audio.core.service.LaSyncForegroundService
 import com.lasync.audio.core.updater.UpdateChecker
 import com.lasync.audio.core.updater.UpdateInfo
+import com.lasync.audio.ui.components.SessionExitDialog
 import com.lasync.audio.ui.components.UpdateDialog
 import com.lasync.audio.ui.screens.HomeScreen
 import com.lasync.audio.ui.screens.HostScreen
@@ -230,15 +235,45 @@ class MainActivity : ComponentActivity() {
         setContent {
             LaSyncTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .navigationBarsPadding(),
                     color = VoidBackground
                 ) {
                     var currentScreen by currentScreenState
                     val availableUpdate by availableUpdateState
+                    var showExitDialog by remember { mutableStateOf(false) }
+                    var lastBackPressTime by remember { mutableStateOf(0L) }
+                    val hostState by hostEngine.uiState.collectAsState()
+                    val receiverState by receiverEngine.uiState.collectAsState()
 
-                    // Prevent resetting to landing screen: back button minimizes app while keeping connection alive
-                    BackHandler(enabled = currentScreen != ScreenState.HOME) {
-                        moveTaskToBack(true)
+                    // Modern Ergonomic BackHandler
+                    BackHandler {
+                        when (currentScreen) {
+                            ScreenState.HOME -> {
+                                val now = System.currentTimeMillis()
+                                if (now - lastBackPressTime < 2000L) {
+                                    finish()
+                                } else {
+                                    lastBackPressTime = now
+                                    Toast.makeText(this@MainActivity, "Press back again to exit", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            ScreenState.RECEIVER -> {
+                                if (receiverState.state == ReceiverState.CONNECTED) {
+                                    showExitDialog = true
+                                } else {
+                                    // Not connected yet: smoothly return to Home
+                                    receiverEngine.stop()
+                                    LaSyncForegroundService.stop(this@MainActivity)
+                                    currentScreen = ScreenState.HOME
+                                }
+                            }
+                            ScreenState.HOST -> {
+                                showExitDialog = true
+                            }
+                        }
                     }
 
                     // In-App GitHub Auto-Updater Dialog
@@ -247,6 +282,33 @@ class MainActivity : ComponentActivity() {
                             updateInfo = availableUpdate!!,
                             onDismiss = {
                                 availableUpdateState.value = null
+                            }
+                        )
+                    }
+
+                    // Active Session Exit / Background Dialog
+                    if (showExitDialog) {
+                        SessionExitDialog(
+                            isHost = currentScreen == ScreenState.HOST,
+                            connectedCount = hostState.receivers.size,
+                            connectedHostName = receiverState.connectedHostName,
+                            onRunInBackground = {
+                                showExitDialog = false
+                                moveTaskToBack(true)
+                            },
+                            onEndSession = {
+                                showExitDialog = false
+                                if (currentScreen == ScreenState.HOST) {
+                                    hostEngine.stopAllAudio()
+                                    hostEngine.stop()
+                                } else {
+                                    receiverEngine.stop()
+                                }
+                                LaSyncForegroundService.stop(this@MainActivity)
+                                currentScreen = ScreenState.HOME
+                            },
+                            onDismiss = {
+                                showExitDialog = false
                             }
                         )
                     }
@@ -286,11 +348,11 @@ class MainActivity : ComponentActivity() {
                                     onRequestMediaProjection = { callback ->
                                         requestMediaProjection(callback)
                                     },
+                                    onBack = {
+                                        showExitDialog = true
+                                    },
                                     onStopSession = {
-                                        hostEngine.stopAllAudio()
-                                        hostEngine.stop()
-                                        LaSyncForegroundService.stop(this@MainActivity)
-                                        currentScreen = ScreenState.HOME
+                                        showExitDialog = true
                                     }
                                 )
                             }
@@ -298,10 +360,23 @@ class MainActivity : ComponentActivity() {
                             ScreenState.RECEIVER -> {
                                 ReceiverScreen(
                                     engine = receiverEngine,
+                                    onBack = {
+                                        if (receiverState.state == ReceiverState.CONNECTED) {
+                                            showExitDialog = true
+                                        } else {
+                                            receiverEngine.stop()
+                                            LaSyncForegroundService.stop(this@MainActivity)
+                                            currentScreen = ScreenState.HOME
+                                        }
+                                    },
                                     onLeave = {
-                                        receiverEngine.stop()
-                                        LaSyncForegroundService.stop(this@MainActivity)
-                                        currentScreen = ScreenState.HOME
+                                        if (receiverState.state == ReceiverState.CONNECTED) {
+                                            showExitDialog = true
+                                        } else {
+                                            receiverEngine.stop()
+                                            LaSyncForegroundService.stop(this@MainActivity)
+                                            currentScreen = ScreenState.HOME
+                                        }
                                     }
                                 )
                             }
@@ -358,14 +433,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (currentScreenState.value != ScreenState.HOME) {
-            moveTaskToBack(true)
-        } else {
-            super.onBackPressed()
-        }
-    }
 
     override fun onDestroy() {
         LaSyncForegroundService.onSessionStopRequested = null

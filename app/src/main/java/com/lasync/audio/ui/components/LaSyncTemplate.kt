@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -80,6 +81,7 @@ fun LaSyncTopBar(
     title: String,
     subtitle: String,
     tag: String? = null,
+    onBackClick: (() -> Unit)? = null,
     onCloseClick: (() -> Unit)? = null,
     onLogoPressStart: (() -> Unit)? = null,
     onLogoPressEnd: (() -> Unit)? = null,
@@ -100,8 +102,25 @@ fun LaSyncTopBar(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            if (onBackClick != null) {
+                IconButton(
+                    onClick = onBackClick,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(CarbonCardHighlight, CircleShape)
+                        .border(1.dp, BorderNeon, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Navigate Back",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
             // App Logo with glowing squircle aura and Push-to-Talk touch gesture
             Box(
                 modifier = Modifier

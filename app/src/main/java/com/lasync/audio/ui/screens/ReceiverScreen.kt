@@ -21,18 +21,32 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -67,9 +81,13 @@ import java.util.Locale
 fun ReceiverScreen(
     engine: ReceiverNetworkEngine,
     onLeave: () -> Unit,
+    onBack: () -> Unit = onLeave,
     modifier: Modifier = Modifier
 ) {
     val state by engine.uiState.collectAsState()
+    val focusManager = LocalFocusManager.current
+    var showManualConnect by remember { mutableStateOf(false) }
+    var manualIpText by remember { mutableStateOf("") }
 
     Column(
         modifier = modifier
@@ -82,6 +100,7 @@ fun ReceiverScreen(
             title = "LaSync",
             subtitle = if (state.state == ReceiverState.CONNECTED) "Connected • ${state.sessionId}" else "Searching LAN",
             tag = "LISTENER",
+            onBackClick = onBack,
             onCloseClick = onLeave,
             isMegaphoneActive = state.isMegaphoneActive
         )
@@ -182,7 +201,114 @@ fun ReceiverScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Direct Manual IP Connect Card (for Wi-Fi networks blocking UDP broadcast)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(CarbonCardHighlight)
+                            .border(1.dp, Ultraviolet.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                            .padding(12.dp)
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showManualConnect = !showManualConnect },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lan,
+                                        contentDescription = null,
+                                        tint = Ultraviolet,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "CAN'T FIND HOST? CONNECT VIA IP",
+                                        fontSize = 11.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Ultraviolet
+                                    )
+                                }
+                                Icon(
+                                    imageVector = if (showManualConnect) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            if (showManualConnect) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = manualIpText,
+                                        onValueChange = { manualIpText = it },
+                                        placeholder = {
+                                            Text("Host IP (e.g. 192.168.1.5)", fontSize = 12.sp, color = TextMuted)
+                                        },
+                                        textStyle = TextStyle(
+                                            color = TextPrimary,
+                                            fontSize = 13.sp,
+                                            fontFamily = FontFamily.Monospace
+                                        ),
+                                        singleLine = true,
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Decimal,
+                                            imeAction = ImeAction.Done
+                                        ),
+                                        keyboardActions = KeyboardActions(
+                                            onDone = {
+                                                focusManager.clearFocus()
+                                                if (manualIpText.isNotBlank()) {
+                                                    engine.joinBySessionId("HOST", manualIpText.trim())
+                                                }
+                                            }
+                                        ),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = Ultraviolet,
+                                            unfocusedBorderColor = BorderNeon,
+                                            cursorColor = Ultraviolet
+                                        ),
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    Button(
+                                        onClick = {
+                                            focusManager.clearFocus()
+                                            if (manualIpText.isNotBlank()) {
+                                                engine.joinBySessionId("HOST", manualIpText.trim())
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Ultraviolet),
+                                        shape = RoundedCornerShape(10.dp),
+                                        enabled = manualIpText.isNotBlank()
+                                    ) {
+                                        Text(
+                                            text = "JOIN",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = VoidBackground
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     // Discovered Hosts List
                     LazyColumn(

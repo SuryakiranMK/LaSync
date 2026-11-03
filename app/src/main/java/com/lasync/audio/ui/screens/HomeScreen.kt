@@ -1,4 +1,4 @@
-﻿package com.lasync.audio.ui.screens
+package com.lasync.audio.ui.screens
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -37,6 +37,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -220,7 +222,7 @@ fun HomeScreen(
                 }
 
                 Text(
-                    text = "PHASE 1",
+                    text = "v1.2.1",
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
@@ -240,13 +242,18 @@ private fun ModeSelectionCard(
     accentColor: Color,
     onClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(CarbonCard)
             .border(1.5.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            }
             .padding(20.dp)
     ) {
         Column {

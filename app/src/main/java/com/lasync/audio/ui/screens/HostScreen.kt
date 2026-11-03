@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Group
@@ -34,7 +35,6 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Slider
@@ -47,9 +47,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import android.widget.Toast
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -80,9 +85,12 @@ fun HostScreen(
     engine: HostNetworkEngine,
     onRequestMediaProjection: ((MediaProjection?) -> Unit) -> Unit,
     onStopSession: () -> Unit,
+    onBack: () -> Unit = onStopSession,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val state by engine.uiState.collectAsState()
 
@@ -107,6 +115,7 @@ fun HostScreen(
             title = "LaSync",
             subtitle = "Master Host • ${state.sessionId}",
             tag = "HOST",
+            onBackClick = onBack,
             onCloseClick = onStopSession,
             onLogoPressStart = { engine.startMegaphone(context) },
             onLogoPressEnd = { engine.stopMegaphone() },
@@ -115,13 +124,18 @@ fun HostScreen(
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        // Session Information Card
+        // Session Information Card (Tap to copy Host IP)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(CarbonCard)
                 .border(1.dp, BorderNeon, RoundedCornerShape(16.dp))
+                .clickable {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    clipboardManager.setText(AnnotatedString("${state.localIp}:8888"))
+                    Toast.makeText(context, "Host address ${state.localIp}:8888 copied to clipboard", Toast.LENGTH_SHORT).show()
+                }
                 .padding(16.dp)
         ) {
             Row(
@@ -815,7 +829,7 @@ fun HostScreen(
                         // Benchmark 440 Hz Tone Test Button
                         LaSyncButton(
                             text = "START 440 Hz ACOUSTIC TEST",
-                            icon = Icons.Default.VolumeUp,
+                            icon = Icons.AutoMirrored.Filled.VolumeUp,
                             accentColor = HyperCyan,
                             onClick = { engine.startToneTest() },
                             modifier = Modifier.fillMaxWidth()

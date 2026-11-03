@@ -25,6 +25,7 @@ class LaSyncForegroundService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
+    private var multicastLock: WifiManager.MulticastLock? = null
 
     companion object {
         private const val TAG = "LaSyncService"
@@ -336,6 +337,14 @@ class LaSyncForegroundService : Service() {
                 acquire()
             }
         }
+
+        if (multicastLock == null) {
+            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            multicastLock = wifiManager.createMulticastLock("LaSync::MulticastLock").apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+        }
     }
 
     private fun releaseLocks() {
@@ -348,6 +357,11 @@ class LaSyncForegroundService : Service() {
             if (it.isHeld) it.release()
         }
         wifiLock = null
+
+        multicastLock?.let {
+            if (it.isHeld) it.release()
+        }
+        multicastLock = null
     }
 
     override fun onDestroy() {

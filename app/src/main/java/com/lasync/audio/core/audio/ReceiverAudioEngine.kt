@@ -94,6 +94,21 @@ class ReceiverAudioEngine(
 
     private val volumeOverrideManager = context?.let { VolumeOverrideManager(it) }
 
+    private var isMutedByAudioFocus: Boolean = false
+    private val audioFocusManager = context?.let {
+        LaSyncAudioFocusManager(
+            context = it,
+            onFocusLost = {
+                isMutedByAudioFocus = true
+                applyAudioTrackVolume()
+            },
+            onFocusGained = {
+                isMutedByAudioFocus = false
+                applyAudioTrackVolume()
+            }
+        )
+    }
+
     @Volatile
     var delayTrimMs: Int = 0
         private set
@@ -119,7 +134,7 @@ class ReceiverAudioEngine(
 
     private fun applyAudioTrackVolume() {
         try {
-            val gain = if (isMutedByHost) 0f else (remoteVolumePercent / 100f)
+            val gain = if (isMutedByHost || isMutedByAudioFocus) 0f else (remoteVolumePercent / 100f)
             audioTrack?.setVolume(gain)
         } catch (_: Exception) {}
     }
@@ -163,6 +178,7 @@ class ReceiverAudioEngine(
         } catch (_: Exception) {}
         _isAudioPlaying.value = false
         _isPhaseLocked.value = false
+        audioFocusManager?.abandonFocus()
     }
 
     @Volatile
@@ -233,6 +249,7 @@ class ReceiverAudioEngine(
 
         _isAudioPlaying.value = false
         _isPhaseLocked.value = false
+        audioFocusManager?.abandonFocus()
     }
 
     private fun runReceiverLoop() {
@@ -306,6 +323,7 @@ class ReceiverAudioEngine(
             if (!isPlayingStarted) {
                 // For live Megaphone voice, play immediately with zero jitter delay
                 if (_isMegaphoneActive.value || jitterQueue.size >= requiredBufferFrames) {
+                    audioFocusManager?.requestFocus()
                     audioTrack?.play()
                     isPlayingStarted = true
                     _isAudioPlaying.value = true
@@ -318,6 +336,7 @@ class ReceiverAudioEngine(
             // Stream timed out: host stopped streaming
             if (timeSinceLastPacketMs > STREAM_TIMEOUT_MS && jitterQueue.isEmpty()) {
                 if (isPlayingStarted) {
+                    audioFocusManager?.abandonFocus()
                     audioTrack?.pause()
                     audioTrack?.flush()
                     isPlayingStarted = false
