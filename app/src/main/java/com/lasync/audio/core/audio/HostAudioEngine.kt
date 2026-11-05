@@ -333,6 +333,28 @@ class HostAudioEngine(
         }
     }
 
+    fun playCalibrationChirp(scheduledStartNanos: Long) {
+        val chirpGen = AcousticChirpGenerator(durationMs = 60)
+        val pcm = chirpGen.generatePcmBytes()
+        val stereoPcm = AudioConstants.monoToStereo(pcm)
+
+        scope.launch(Dispatchers.IO) {
+            try {
+                setupLocalAudioTrack()
+                val now = SystemClock.elapsedRealtimeNanos()
+                val waitNs = scheduledStartNanos - now
+                val waitMs = waitNs / 1_000_000L
+                if (waitMs > 2) {
+                    delay(waitMs)
+                }
+                localAudioTrack?.play()
+                localAudioTrack?.write(stereoPcm, 0, stereoPcm.size, AudioTrack.WRITE_BLOCKING)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error playing calibration chirp: ${e.message}", e)
+            }
+        }
+    }
+
     private fun setupLocalAudioTrack() {
         val minBufferSize = AudioTrack.getMinBufferSize(
             AudioConstants.SAMPLE_RATE,

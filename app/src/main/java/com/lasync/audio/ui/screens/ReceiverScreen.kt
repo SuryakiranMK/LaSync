@@ -911,6 +911,15 @@ fun ReceiverScreen(
                         )
                     }
 
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    AcousticCalibrationCard(
+                        calibrationState = state.calibrationState,
+                        delayTrimMs = state.delayTrimMs,
+                        onStartCalibration = { engine.startAcousticCalibration() },
+                        onCancelCalibration = { engine.cancelAcousticCalibration() }
+                    )
+
                     Spacer(modifier = Modifier.height(18.dp))
 
                     // Disconnect Button using LaSyncButton
@@ -1002,4 +1011,146 @@ private fun formatTime(ms: Long): String {
     val minutes = totalSec / 60
     val seconds = totalSec % 60
     return String.format(java.util.Locale.US, "%02d:%02d", minutes, seconds)
+}
+
+@Composable
+private fun AcousticCalibrationCard(
+    calibrationState: com.lasync.audio.core.calibration.CalibrationState,
+    delayTrimMs: Int,
+    onStartCalibration: () -> Unit,
+    onCancelCalibration: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(CarbonCard)
+            .border(
+                1.dp,
+                when (calibrationState) {
+                    is com.lasync.audio.core.calibration.CalibrationState.Success -> QuantumMint
+                    is com.lasync.audio.core.calibration.CalibrationState.Listening -> SolarAmber
+                    is com.lasync.audio.core.calibration.CalibrationState.Failed -> CrimsonPulse
+                    else -> BorderNeon
+                },
+                RoundedCornerShape(16.dp)
+            )
+            .padding(14.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Sensors,
+                        contentDescription = "PhaseLock",
+                        tint = when (calibrationState) {
+                            is com.lasync.audio.core.calibration.CalibrationState.Success -> QuantumMint
+                            is com.lasync.audio.core.calibration.CalibrationState.Listening -> SolarAmber
+                            else -> HyperCyan
+                        },
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "PHASELOCK ACOUSTIC CALIBRATION",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 0.5.sp,
+                        color = TextPrimary
+                    )
+                }
+
+                if (delayTrimMs != 0) {
+                    Text(
+                        text = "${if (delayTrimMs > 0) "+$delayTrimMs" else "$delayTrimMs"}ms",
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = QuantumMint
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            when (calibrationState) {
+                is com.lasync.audio.core.calibration.CalibrationState.Idle -> {
+                    Text(
+                        text = "Microphone listens for Host chirp to auto-align speaker phase with room acoustics.",
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LaSyncButton(
+                        text = "AUTO-CALIBRATE TO HOST",
+                        icon = Icons.Default.Sensors,
+                        accentColor = HyperCyan,
+                        onClick = onStartCalibration,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                is com.lasync.audio.core.calibration.CalibrationState.Listening -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        LaSyncWaveEqualizer(tint = SolarAmber, maxHeight = 16.dp)
+                        Text(
+                            text = "Listening for Host chirp...",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            color = SolarAmber
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LaSyncButton(
+                        text = "CANCEL LISTENING",
+                        accentColor = CrimsonPulse,
+                        onClick = onCancelCalibration,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                is com.lasync.audio.core.calibration.CalibrationState.Success -> {
+                    Text(
+                        text = "✅ Phase-Locked! Calibrated ${if (calibrationState.measuredOffsetMs > 0) "+${calibrationState.measuredOffsetMs}" else "${calibrationState.measuredOffsetMs}"}ms delay (${calibrationState.confidencePercent}% confidence)",
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = QuantumMint
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LaSyncButton(
+                        text = "RE-CALIBRATE",
+                        icon = Icons.Default.Sensors,
+                        accentColor = HyperCyan,
+                        onClick = onStartCalibration,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                is com.lasync.audio.core.calibration.CalibrationState.Failed -> {
+                    Text(
+                        text = "⚠️ ${calibrationState.reason}",
+                        fontSize = 11.sp,
+                        color = CrimsonPulse
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LaSyncButton(
+                        text = "RETRY AUTO-CALIBRATION",
+                        accentColor = SolarAmber,
+                        onClick = onStartCalibration,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
 }

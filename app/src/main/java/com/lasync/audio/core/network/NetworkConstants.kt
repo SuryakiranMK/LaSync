@@ -26,6 +26,8 @@ object NetworkConstants {
     const val TYPE_JUKEBOX_PAUSE: Byte = 0x23
     const val TYPE_JUKEBOX_STOP: Byte = 0x24
     const val TYPE_JUKEBOX_SEEK: Byte = 0x25
+    const val TYPE_CALIBRATION_TRIGGER: Byte = 0x30
+    const val TYPE_CALIBRATION_REPORT: Byte = 0x31
 
     const val BEACON_INTERVAL_MS = 1000L
     const val PING_INTERVAL_FAST_MS = 200L

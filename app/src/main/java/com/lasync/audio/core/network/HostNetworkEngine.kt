@@ -39,7 +39,9 @@ data class HostUiState(
     val jukeboxProgress: Float = 0f,
     val readyReceiversCount: Int = 0,
     val isHotspotActive: Boolean = false,
-    val hotspotInfo: com.lasync.audio.core.hotspot.HotspotInfo? = null
+    val hotspotInfo: com.lasync.audio.core.hotspot.HotspotInfo? = null,
+    val isCalibrating: Boolean = false,
+    val lastCalibratedNodeId: String? = null
 )
 
 class HostNetworkEngine(
@@ -204,6 +206,29 @@ class HostNetworkEngine(
     fun stopAllAudio() {
         audioEngine.stopAll()
         broadcastControlPacket(NetworkConstants.TYPE_AUDIO_STOP)
+    }
+
+    fun triggerAcousticCalibration() {
+        val now = android.os.SystemClock.elapsedRealtimeNanos()
+        val scheduledChirpNanos = now + 400_000_000L // 400ms lead time
+
+        _uiState.value = _uiState.value.copy(isCalibrating = true)
+        audioEngine.playCalibrationChirp(scheduledChirpNanos)
+
+        val triggerPacket = ControlPacket(
+            type = NetworkConstants.TYPE_CALIBRATION_TRIGGER,
+            sessionId = sessionId,
+            sequenceNumber = 0L,
+            senderId = "HOST",
+            t1 = scheduledChirpNanos
+        )
+        broadcastControlPacket(triggerPacket)
+
+        // Reset calibrating indicator after 2.5 seconds
+        scope.launch {
+            kotlinx.coroutines.delay(2500)
+            _uiState.value = _uiState.value.copy(isCalibrating = false)
+        }
     }
 
     private val readyReceiversSet = ConcurrentHashMap.newKeySet<String>()
@@ -489,6 +514,21 @@ class HostNetworkEngine(
             NetworkConstants.TYPE_JUKEBOX_READY -> {
                 readyReceiversSet.add(packet.senderId)
                 _uiState.value = _uiState.value.copy(readyReceiversCount = readyReceiversSet.size)
+            }
+
+            NetworkConstants.TYPE_CALIBRATION_REPORT -> {
+                try {
+                    val offsetStr = String(packet.payload, StandardCharsets.UTF_8)
+                    val offsetMs = offsetStr.toIntOrNull()
+                    if (offsetMs != null) {
+                        receiversMap[packet.senderId]?.let { node ->
+                            receiversMap[packet.senderId] = node.copy(delayTrimMs = offsetMs)
+                            sendRemoteConfigToReceiver(packet.senderId)
+                            _uiState.value = _uiState.value.copy(lastCalibratedNodeId = packet.senderId)
+                            updateUiState()
+                        }
+                    }
+                } catch (_: Exception) {}
             }
         }
     }

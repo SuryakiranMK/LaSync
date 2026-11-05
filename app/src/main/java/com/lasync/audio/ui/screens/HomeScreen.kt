@@ -73,9 +73,9 @@ fun HomeScreen(
     val localIp = NetworkUtils.getLocalIpAddress() ?: "Wi-Fi connecting..."
     val versionName = remember {
         try {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.3.0"
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.4.0"
         } catch (_: Exception) {
-            "1.3.0"
+            "1.4.0"
         }
     }
 

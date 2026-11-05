@@ -214,7 +214,11 @@ fun HostScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        SoundboardConsoleHeader(activeCount = state.receivers.size)
+        SoundboardConsoleHeader(
+            activeCount = state.receivers.size,
+            isCalibrating = state.isCalibrating,
+            onAutoCalibrate = { engine.triggerAcousticCalibration() }
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -552,7 +556,11 @@ private fun AutonomousHotspotCard(
 }
 
 @Composable
-private fun SoundboardConsoleHeader(activeCount: Int) {
+private fun SoundboardConsoleHeader(
+    activeCount: Int,
+    isCalibrating: Boolean = false,
+    onAutoCalibrate: () -> Unit = {}
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -577,20 +585,66 @@ private fun SoundboardConsoleHeader(activeCount: Int) {
             )
         }
 
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(HyperCyan.copy(alpha = 0.12f))
-                .border(1.dp, HyperCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                .padding(horizontal = 10.dp, vertical = 4.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = "$activeCount ACTIVE",
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                color = HyperCyan
-            )
+            if (activeCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isCalibrating) SolarAmber.copy(alpha = 0.2f) else Ultraviolet.copy(alpha = 0.15f))
+                        .border(1.dp, if (isCalibrating) SolarAmber else Ultraviolet, RoundedCornerShape(8.dp))
+                        .clickable(enabled = !isCalibrating) { onAutoCalibrate() }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (isCalibrating) {
+                            LaSyncWaveEqualizer(tint = SolarAmber, maxHeight = 12.dp)
+                            Text(
+                                text = "CALIBRATING",
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                color = SolarAmber
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = "Auto Calibrate",
+                                tint = Ultraviolet,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = "AUTO-CALIBRATE",
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                color = Ultraviolet
+                            )
+                        }
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(HyperCyan.copy(alpha = 0.12f))
+                    .border(1.dp, HyperCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "$activeCount ACTIVE",
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    color = HyperCyan
+                )
+            }
         }
     }
 }

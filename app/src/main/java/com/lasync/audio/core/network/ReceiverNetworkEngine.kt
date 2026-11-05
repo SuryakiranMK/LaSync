@@ -64,7 +64,8 @@ data class ReceiverUiState(
     val isJukeboxPlaying: Boolean = false,
     val jukeboxPositionMs: Long = 0L,
     val jukeboxDurationMs: Long = 0L,
-    val jukeboxProgress: Float = 0f
+    val jukeboxProgress: Float = 0f,
+    val calibrationState: com.lasync.audio.core.calibration.CalibrationState = com.lasync.audio.core.calibration.CalibrationState.Idle
 )
 
 class ReceiverNetworkEngine(
@@ -79,6 +80,7 @@ class ReceiverNetworkEngine(
 
     val clockSyncEngine = ClockSyncEngine(windowSize = 12)
     val audioEngine = com.lasync.audio.core.audio.ReceiverAudioEngine(scope, clockSyncEngine, context)
+    val calibrationEngine = com.lasync.audio.core.calibration.AcousticCalibrationEngine(scope, clockSyncEngine, context)
     private val discoveredHostsMap = mutableMapOf<String, DiscoveredHost>()
 
     private val clientId = UUID.randomUUID().toString().take(8).uppercase()
@@ -146,6 +148,11 @@ class ReceiverNetworkEngine(
             launch {
                 audioEngine.jukeboxPlaybackEngine.playbackProgress.collect { prog ->
                     _uiState.value = _uiState.value.copy(jukeboxProgress = prog)
+                }
+            }
+            launch {
+                calibrationEngine.state.collect { calState ->
+                    _uiState.value = _uiState.value.copy(calibrationState = calState)
                 }
             }
         }
@@ -359,6 +366,23 @@ class ReceiverNetworkEngine(
             NetworkConstants.TYPE_JUKEBOX_STOP -> {
                 audioEngine.stopJukebox()
             }
+
+            NetworkConstants.TYPE_CALIBRATION_TRIGGER -> {
+                val hostChirpTimeNs = packet.t1
+                calibrationEngine.startCalibration(hostChirpTimeNs) { calibratedTrimMs ->
+                    audioEngine.setDelayTrimMs(calibratedTrimMs)
+                    _uiState.value = _uiState.value.copy(delayTrimMs = calibratedTrimMs)
+
+                    val reportPacket = ControlPacket(
+                        type = NetworkConstants.TYPE_CALIBRATION_REPORT,
+                        sessionId = targetSessionId,
+                        sequenceNumber = 0L,
+                        senderId = clientId,
+                        payload = calibratedTrimMs.toString().toByteArray(StandardCharsets.UTF_8)
+                    )
+                    targetHostAddress?.let { sendPacket(reportPacket, it, NetworkConstants.PORT_CONTROL) }
+                }
+            }
         }
     }
 
@@ -533,6 +557,28 @@ class ReceiverNetworkEngine(
             jukeboxProgress = 0f,
             jukeboxPositionMs = 0L
         )
+    }
+
+    fun startAcousticCalibration() {
+        val now = SystemClock.elapsedRealtimeNanos()
+        val expectedHostChirpNs = clockSyncEngine.toMasterTimeNanos(now) + 400_000_000L
+        calibrationEngine.startCalibration(expectedHostChirpNs) { calibratedTrimMs ->
+            audioEngine.setDelayTrimMs(calibratedTrimMs)
+            _uiState.value = _uiState.value.copy(delayTrimMs = calibratedTrimMs)
+
+            val reportPacket = ControlPacket(
+                type = NetworkConstants.TYPE_CALIBRATION_REPORT,
+                sessionId = targetSessionId,
+                sequenceNumber = 0L,
+                senderId = clientId,
+                payload = calibratedTrimMs.toString().toByteArray(StandardCharsets.UTF_8)
+            )
+            targetHostAddress?.let { sendPacket(reportPacket, it, NetworkConstants.PORT_CONTROL) }
+        }
+    }
+
+    fun cancelAcousticCalibration() {
+        calibrationEngine.cancelCalibration()
     }
 
     fun stop() {

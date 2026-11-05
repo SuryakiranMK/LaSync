@@ -10,11 +10,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SuryakiranMK/LaSync/releases/download/v1.1.3/LaSync.apk">
-    <img src="https://img.shields.io/badge/Download%20APK-v1.1.3-00F2FE?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
+  <a href="https://github.com/SuryakiranMK/LaSync/releases/download/v1.4.0/LaSync.apk">
+    <img src="https://img.shields.io/badge/Download%20APK-v1.4.0-00F2FE?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
   </a>
   <a href="https://github.com/SuryakiranMK/LaSync/releases/latest">
-    <img src="https://img.shields.io/badge/Release-v1.1.3-9D4EDD?style=for-the-badge" alt="Release Version" />
+    <img src="https://img.shields.io/badge/Release-v1.4.0-9D4EDD?style=for-the-badge" alt="Release Version" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-Apache%202.0-00F5A0?style=for-the-badge" alt="License" />
   </a>
 </p>
 
@@ -133,3 +136,26 @@ adb install -r LaSync.apk
 6. **To Broadcast via GhostMegaphone**: On the Host, press and hold the glowing LaSync logo at the top or the **[ HOLD TO TALK ]** button to speak. All connected phones will instantly boost to 100% volume and broadcast your voice with zero delay! Release to un-duck music and restore previous receiver volumes.
 7. **To Fine-Tune Multi-Phone Sync (SoundBoard)**: On the Host screen, each connected phone appears as a mixing strip. Tap `[ -10ms ]` / `[ +10ms ]` to compensate for Bluetooth delays or room echoes, adjust volume remotely, or tap **[ SOLO ]** to isolate one phone!
 8. **To Play Offline Audio (RAMJukebox)**: On the Host, tap **[ PLAY LOCAL FILE (RAM JUKEBOX) ]** and choose an MP3, FLAC, WAV, or AAC file. The song is decoded and blasted directly into all connected phones' RAM in 1–2 seconds. Hit **[ PLAY ]** to trigger synchronized phase-locked playback with ZERO Wi-Fi traffic during playback!
+9. **To Auto-Calibrate Room Acoustics (PhaseLock v1.4.0)**: On the Host Soundboard or Receiver screen, tap **[ AUTO-CALIBRATE ]**. The Host emits a microsecond-timed acoustic sync chirp, while listener phones detect arrival using their microphones and automatically tune out room distance and DAC latency down to the millisecond!
+
+---
+
+## 📄 License
+
+This project is licensed under the **Apache License, Version 2.0**. See the [LICENSE](LICENSE) file for the full license text.
+
+```text
+Copyright 2026 Suryakiran M K
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
